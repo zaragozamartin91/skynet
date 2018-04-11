@@ -2,8 +2,8 @@ import pandas
 import numpy as np
 
 DEFAULT_DELIM = ';'
-IN_DEMAND_IDX = 4
-OUT_DEMAND_IDX = 5
+IN_DEMAND_IDX = 5
+OUT_DEMAND_IDX = 6
 
 
 def build_dataframe(file_path , delim = DEFAULT_DELIM):

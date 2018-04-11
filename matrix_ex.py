@@ -1,13 +1,13 @@
-from matrix import var_matrix_builder
-from matrix import out_matrix_builder
+from skmatrix import var_matrix_builder
+from skmatrix import out_matrix_builder
 import pandas
 
 
 file_path = 'entrada_salida_pesos_540.csv'
 
-dataset = out_matrix_builder.build_dataframe(file_path)
-print(dataset)
+dataframe = out_matrix_builder.build_dataframe(file_path)
+print(dataframe)
 
 
-dataset = var_matrix_builder.build_dataframe(file_path)
-print(dataset)
+dataframe = var_matrix_builder.build_dataframe(file_path)
+print(dataframe)
