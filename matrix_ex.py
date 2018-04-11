@@ -1,22 +1,21 @@
-from skmatrix import var_matrix_builder
-from skmatrix import out_matrix_builder
+from skmatrix import matrix_builder
 import pandas
 
 
-file_path = 'entrada_salida_pesos_540.csv'
+file_path = 'entrada_salida_pesos_540_2014_2017.csv'
 
 # dataframe = out_matrix_builder.build_dataframe(file_path)
 # print(dataframe)
 
 
-dataframe = var_matrix_builder.build_dataframe(file_path)
+dataframe = matrix_builder.build_dataframe(file_path)
 # print(dataframe)
 
-full_dataframe = var_matrix_builder.fill_dataset(dataframe.values)
+full_dataset = matrix_builder.fill_dataset(dataframe.values)
 print('')
-print('full_dataframe: ')
-print(full_dataframe)
-print('full_dataframe.size: ')
-print(full_dataframe.size)
-print('full_dataframe.dtype: ')
-print(full_dataframe.dtype)
+print('full_dataset: ')
+print(full_dataset)
+print('full_dataset.size: ')
+print(full_dataset.size)
+print('full_dataset.dtype: ')
+print(full_dataset.dtype)
