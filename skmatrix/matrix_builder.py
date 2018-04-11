@@ -125,6 +125,22 @@ def is_weekend(dow):  return dow == DOW_SATURDAY or dow == DOW_SUNDAY
 
 def no_demand(dout):  return dout < 1.0
 
+def fill_dataset_wpreholidays(dataset):
+  count = dataset[:,0].size
+  for idx in range(count):
+    pholidays = get_pholidays(idx , dataset)
+
+def get_pholidays(idx , dataset):
+  if(idx < 0): return 0 # llegue a la primera entrada
+
+  entry = dataset[idx]
+  dow = get_dow(entry)
+  if(is_weekend(dow)): return get_pholidays(idx - 1 , dataset) # los fines de semana no cuentan
+  
+  dout = get_dout(entry)
+  if(no_demand(dout)): return 1 + get_pholidays(idx - 1 , dataset) # si no hay demanda, cuento un dia no laborable
+  else: return 0
+
 # GETTERS DE entry -----------------------------------------------------------------------------------------------------
 
 def get_dow(entry):
