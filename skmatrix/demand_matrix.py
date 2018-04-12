@@ -10,7 +10,7 @@ DATE_IDX, COL_IDX = COL_IDX, COL_IDX + 1
 DOW_IDX, COL_IDX = COL_IDX, COL_IDX + 1
 DOM_IDX, COL_IDX = COL_IDX, COL_IDX + 1
 MONTH_IDX, COL_IDX = COL_IDX, COL_IDX + 1
-YEAR_IDX , COL_IDX = COL_IDX, COL_IDX + 1
+YEAR_IDX, COL_IDX = COL_IDX, COL_IDX + 1
 IN_DEMAND_IDX, COL_IDX = COL_IDX, COL_IDX + 1
 OUT_DEMAND_IDX, COL_IDX = COL_IDX, COL_IDX + 1
 
@@ -116,11 +116,13 @@ def add_entry(entry, dataset):
 
 # CALCULO DE DIAS NO LABORABLES -----------------------------------------------------------------------------------------------------
 
+
 def fill_dataset_wholidays(dataset):
     """ Obtiene un nuevo dataset con las columnas de dias previos y posteriores de vacaciones agregados """
     holidays = get_holidays(dataset)
     hnp = np.array(holidays).T
-    return np.hstack( (dataset , hnp) )
+    return np.hstack((dataset, hnp))
+
 
 def get_holidays(dataset):
     """ Obtiene una tupla con arreglos de los dias previos y posteriores de vacaciones """
@@ -190,9 +192,6 @@ def no_demand(dout):
     return dout < 1.0
 
 
-
-
-
 # GETTERS DE entry -----------------------------------------------------------------------------------------------------
 
 
@@ -208,6 +207,14 @@ def get_date(entry):
 
 def get_dout(entry):
     return entry[OUT_DEMAND_IDX]
+
+
+def get_month(entry):
+    return entry[MONTH_IDX]
+
+
+def get_year(entry):
+    return entry[YEAR_IDX]
 
 
 # SETTERS DE entry -----------------------------------------------------------------------------------------------------
