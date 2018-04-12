@@ -117,6 +117,7 @@ def add_entry(entry, dataset):
 # CALCULO DE DIAS NO LABORABLES -----------------------------------------------------------------------------------------------------
 
 def fill_dataset_wholidays(dataset):
+    """ Obtiene un nuevo dataset con las columnas de dias previos y posteriores de vacaciones agregados """
     holidays = get_holidays(dataset)
     hnp = np.array(holidays).T
     return np.hstack( (dataset , hnp) )
