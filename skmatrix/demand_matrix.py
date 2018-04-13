@@ -36,7 +36,7 @@ def build_dataframe(file_path, delim=DEFAULT_DELIM, cols=DEF_COLS):
 
 def fill_dataset(dataset):
     """ Crea un nuevo dataset con las entradas de dias faltantes """
-    dataset_row_count = dataset[:, 0].size
+    dataset_row_count = len(dataset)
     full_dataset = []
 
     idx = 0
@@ -126,7 +126,7 @@ def fill_dataset_wholidays(dataset):
 
 def get_holidays(dataset):
     """ Obtiene una tupla con arreglos de los dias previos y posteriores de vacaciones """
-    count = dataset[:, 0].size
+    count = len(dataset)
     pre_holidays = []
     post_holidays = []
 
@@ -192,9 +192,9 @@ def no_demand(out_demand):
     return out_demand < 1.0
 
 
-# NORMALIZACION -----------------------------------------------------------------------------------------------------
+# ELIMINACION DE ENTRADAS -----------------------------------------------------------------------------------------------------
 
-def normalize_max_spikes(dataset , order):
+def remove_max_spikes(dataset , order):
     """ Asigna valores promedio a los picos maximos de demanda de entrada y salida que superen el orden indicado respecto de la media """
     ind_mean = dataset[:,IN_DEMAND_IDX].mean()
     outd_mean = dataset[:,OUT_DEMAND_IDX].mean()
@@ -205,7 +205,7 @@ def normalize_max_spikes(dataset , order):
         if(in_demand / outd_mean > order): set_in_demand(entry, outd_mean)
     return dataset
 
-def normalize_min_spikes(dataset , order):
+def remove_min_spikes(dataset , order):
     """ Asigna valores promedio a los picos minimos de demanda de entrada y salida que superen el orden indicado respecto de la media """
     ind_mean = dataset[:,IN_DEMAND_IDX].mean()
     outd_mean = dataset[:,OUT_DEMAND_IDX].mean()
