@@ -84,11 +84,10 @@ def build_missing_entry(curr_entry):
     end_date = date_parser.add_days(start_date, daycount=1)
 
     set_date(missing_entry, date_parser.to_string(end_date))
-    dow = DOW_MAP[end_date.weekday()]
-    set_dow(missing_entry, dow)
-    set_dom(missing_entry, datewr['day'])
-    set_month(missing_entry, datewr['month'])
-    set_year(missing_entry, datewr['year'])
+    set_dow(missing_entry, DOW_MAP[end_date.weekday()])
+    set_dom(missing_entry, end_date.day)
+    set_month(missing_entry, end_date.month)
+    set_year(missing_entry, end_date.year)
     set_in_demand(missing_entry, 0.0)
     set_out_demand(missing_entry, 0.0)
 

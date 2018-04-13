@@ -53,6 +53,8 @@ test_demand = demand_ds[train_size:len(demand_ds),:]
 # la cantidad de neuronas de la capa de salida debe coincidir con la cantidad de valores a predecir
 # activation='relu' indica que la funcion de activacion es RECTIFICADA
 # Si la ultima capa tiene una funcion de activacion, entonces estamos modelando un problema de CLASIFICACION / CLUSTERIZACION en vez de uno de PREDICCION
+# epochs es el número de pasadas por todo el conjunto de datos de entrenamiento
+# batch_size es el número de muestras que se usan para calcular una actualización de los pesos
 
 input_dim = train_vars.shape[1] # la cantidad de neuronas de input es igual a la cantidad de columnas del dataset de entrada
 model = Sequential()
@@ -60,7 +62,7 @@ model.add(Dense(8, input_dim=input_dim, activation='relu'))
 model.add(Dense(2))
 opt = optimizers.adam(lr=0.001)
 model.compile(loss='mean_squared_error', optimizer=opt)
-model.fit(train_vars, train_demand, epochs=2, batch_size=10, verbose=2)
+model.fit(train_vars, train_demand, epochs=200, batch_size=10, verbose=2)
 
 
 # Estimate model performance
