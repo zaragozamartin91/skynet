@@ -89,8 +89,8 @@ def build_missing_entry(curr_entry):
     set_dom(missing_entry, datewr['day'])
     set_month(missing_entry, datewr['month'])
     set_year(missing_entry, datewr['year'])
-    set_din(missing_entry, 0.0)
-    set_dout(missing_entry, 0.0)
+    set_in_demand(missing_entry, 0.0)
+    set_out_demand(missing_entry, 0.0)
 
     return missing_entry
 
@@ -133,8 +133,8 @@ def get_holidays(dataset):
     for idx in range(count):
         entry = dataset[idx]
         dow = get_dow(entry)
-        dout = get_dout(entry)
-        if (is_weekend(dow) or no_demand(dout)):
+        out_demand = get_out_demand(entry)
+        if (is_weekend(dow) or no_demand(out_demand)):
             # los fines de semana y feriados no tienen pre y post dias no laborables
             pre_holidays.append(0)
             post_holidays.append(0)
@@ -160,8 +160,8 @@ def count_post_holidays(idx, dataset, ds_row_count):
     if (is_weekend(dow)):
         return count_post_holidays(idx, dataset, ds_row_count)  # los fines de semana no cuentan
 
-    dout = get_dout(entry)
-    if (no_demand(dout)):
+    out_demand = get_out_demand(entry)
+    if (no_demand(out_demand)):
         return 1 + count_post_holidays(idx, dataset, ds_row_count)  # si no hay demanda, cuento un dia no laborable
     else:
         return 0
@@ -177,8 +177,8 @@ def count_pre_holidays(idx, dataset):
     if (is_weekend(dow)):
         return count_pre_holidays(idx, dataset)  # los fines de semana no cuentan
 
-    dout = get_dout(entry)
-    if (no_demand(dout)):
+    out_demand = get_out_demand(entry)
+    if (no_demand(out_demand)):
         return 1 + count_pre_holidays(idx, dataset)  # si no hay demanda, cuento un dia no laborable
     else:
         return 0
@@ -188,9 +188,42 @@ def is_weekend(dow):
     return dow == DOW_SATURDAY or dow == DOW_SUNDAY
 
 
-def no_demand(dout):
-    return dout < 1.0
+def no_demand(out_demand):
+    return out_demand < 1.0
 
+
+# NORMALIZACION -----------------------------------------------------------------------------------------------------
+
+def normalize_max_spikes(dataset , order):
+    """ Asigna valores promedio a los picos maximos de demanda de entrada y salida que superen el orden indicado respecto de la media """
+    ind_mean = dataset[:,IN_DEMAND_IDX].mean()
+    outd_mean = dataset[:,OUT_DEMAND_IDX].mean()
+    for entry in dataset:
+        out_demand = get_out_demand(entry)
+        if(out_demand / ind_mean > order): set_out_demand(entry , ind_mean)
+        in_demand = get_in_demand(entry)
+        if(in_demand / outd_mean > order): set_in_demand(entry, outd_mean)
+    return dataset
+
+def normalize_min_spikes(dataset , order):
+    """ Asigna valores promedio a los picos minimos de demanda de entrada y salida que superen el orden indicado respecto de la media """
+    ind_mean = dataset[:,IN_DEMAND_IDX].mean()
+    outd_mean = dataset[:,OUT_DEMAND_IDX].mean()
+    for entry in dataset:
+        out_demand = get_out_demand(entry)
+        if(out_demand / ind_mean < order): set_out_demand(entry , ind_mean)
+        in_demand = get_in_demand(entry)
+        if(in_demand / outd_mean < order): set_in_demand(entry, outd_mean)
+    return dataset
+
+def remove_zero_demand_entries(dataset):
+    """ Crea un nuevo dataset sin las entradas con valores de demanda cercanos a cero """
+    outd = dataset[:,OUT_DEMAND_IDX]
+    b1 = outd > 1.0
+    ds1 = dataset[b1]
+    ind = ds1[:,IN_DEMAND_IDX]
+    b2 = ind > 1.0
+    return ds1[b2]
 
 # GETTERS DE entry -----------------------------------------------------------------------------------------------------
 
@@ -205,8 +238,11 @@ def get_date(entry):
     return entry[DATE_IDX]
 
 
-def get_dout(entry):
+def get_out_demand(entry):
     return entry[OUT_DEMAND_IDX]
+
+def get_in_demand(entry):
+    return entry[IN_DEMAND_IDX]
 
 
 def get_month(entry):
@@ -241,9 +277,9 @@ def set_year(entry, year):
     entry[YEAR_IDX] = year
 
 
-def set_din(entry, din):
-    entry[IN_DEMAND_IDX] = din
+def set_in_demand(entry, in_demand):
+    entry[IN_DEMAND_IDX] = in_demand
 
 
-def set_dout(entry, dout):
-    entry[OUT_DEMAND_IDX] = dout
+def set_out_demand(entry, out_demand):
+    entry[OUT_DEMAND_IDX] = out_demand

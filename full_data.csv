@@ -1,4 +1,4 @@
-,dow,dom,month,year,din,dout,prev_holy,pos_holy,minfl
+,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
 0,3,1,7,2014,665243739.0,666752349.0,0,0,2.115
 1,4,2,7,2014,690914315.0,691527550.0,0,0,2.115
 2,5,3,7,2014,868282996.0,867362881.0,0,0,2.115

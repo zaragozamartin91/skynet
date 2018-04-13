@@ -24,12 +24,12 @@ print(full_ds)
 # YEAR_IDX
 # IN_DEMAND_IDX
 # OUT_DEMAND_IDX
-cols = ['dow', 'dom', 'month', 'year', 'din', 'dout', 'prev_holy', 'pos_holy', 'minfl']
+cols = ['dow', 'dom', 'month', 'year', 'in_demand', 'out_demand', 'prev_holy', 'pos_holy', 'minfl']
 full_df = pandas.DataFrame(data=full_ds[:, 1:], columns=cols)
 full_df.to_csv('full_data.csv')
 
-vars_df = pandas.read_csv('full_data.csv', usecols=[1, 2, 3, 7, 8, 9], dtype='float32')
-demand_df = pandas.read_csv('full_data.csv', usecols=[5,6], dtype='float32')
+vars_df = pandas.read_csv('full_data.csv', usecols=[1, 2, 3, 7, 8, 9])
+demand_df = pandas.read_csv('full_data.csv', usecols=[5,6])
 
 vars_df.to_csv('vars.csv')
 demand_df.to_csv('demands.csv')
