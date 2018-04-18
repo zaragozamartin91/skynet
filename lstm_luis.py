@@ -91,15 +91,17 @@ def build_win_matrix(dataset, win_size=1):
 
 numpy.random.seed(7)
 
+input_file = 'full_entrada_salida_pesos_151.csv'
+
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
 # index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
-vars_df = pandas.read_csv('full_data.csv', usecols=[1, 2, 3, 7, 8])
-demand_df = pandas.read_csv('full_data.csv', usecols=[5, 6])
+vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
+demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
 #  0     1   2    3     4         5      6         7          8      9
 # index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
-dates_ds = pandas.read_csv('full_data.csv', usecols=[2, 3, 4]).values
+dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
@@ -233,10 +235,6 @@ plt.show()
 denormalized_true_out_demand = demand_df.values[test_lower_limit+timesteps:test_upper_limit+timesteps, 1] 
 denormalized_predicted_out_demand = denormalized_predicted[:test_size, 1] 
 
-# PLOTEO DE LA DEMANDA DE SALIDA REAL JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(denormalized_true_out_demand, 'b-o'), (denormalized_predicted_out_demand, 'r-o')])
-plt.show()
-
 
 # ERROR USANDO LOS VALORES NORMALIZADOS
 diff = true_out_demand - predicted_out_demand
@@ -256,7 +254,7 @@ error_ds = diff / plus_one
 # # error_ds = diff / denormalized_true_out_demand
 plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
 axes = plt.gca()
-axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+axes.set_ylim([0, 2])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
 # ERROR EN VALORES DES-NORMALIZADOS
@@ -267,7 +265,7 @@ plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
 axes = plt.gca()
 plt.show()
 
-# PLOTEO LOS VALORES PREDECIDOS Y LOS ORIGINALES DES-NORMALIZADOS -----------------------------------------------------------------------------
+# PLOTEO LOS VALORES PREDECIDOS Y LOS ORIGINALES DES-NORMALIZADOS (en miles de pesos) -----------------------------------------------------------------------------
 graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(denormalized_true_out_demand / 1000, 'b'), (denormalized_predicted_out_demand / 1000, 'r')])
 graph.set_ylabel('Dinero en MILES')
 plt.show()

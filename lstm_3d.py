@@ -91,18 +91,22 @@ def build_win_matrix(dataset, win_size=1):
 
 numpy.random.seed(7)
 
+input_file = 'full_entrada_salida_pesos_151.csv'
+
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
 # index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
-vars_df = pandas.read_csv('full_data.csv', usecols=[1, 2, 3, 7, 8])
-demand_df = pandas.read_csv('full_data.csv', usecols=[5, 6])
+vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
+demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
 #  0     1   2    3     4         5      6         7          8      9
 # index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
-dates_ds = pandas.read_csv('full_data.csv', usecols=[2, 3, 4]).values
+dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
+
+DOW_IDX , DOM_IDX , MONTH_IDX , PREVHOLY_IDX , POSTHOLY_IDX = range(vars_ds.shape[1])
 
 # Agrego los valores de la demanda de entrada y salida previas
 vars_ds = append_prev_demand(vars_ds, demand_ds)

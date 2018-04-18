@@ -1,9 +1,16 @@
+import sys
 import pandas
 import matplotlib.pyplot as plt
 import numpy as np
 
+if(len(sys.argv) < 2):
+  print('Argumentos: archivo_demanda')
+  sys.exit(1)
+
+input_file = sys.argv[1]
+
 # we can exclude with the skipfooter argument to pandas.read_csv() set to 3 for the 3 footer lines
-dataframe = pandas.read_csv('entrada_salida_pesos_540_2014_2017.csv', delimiter=';' ,usecols=[5,6], engine='python')
+dataframe = pandas.read_csv(input_file, delimiter=';' ,usecols=[5,6], engine='python')
 dataset = dataframe.values.astype('float32')
 
 DIN_IDX = 0
