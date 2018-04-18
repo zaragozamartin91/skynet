@@ -79,15 +79,15 @@ def build_win_matrix(dataset, win_size=1):
     """ Crea una matriz tridimensional que contenga  """
     win_matrix = []
     row_count = len(dataset)
-    for idx in range(row_count - win_size + 1):
-        upper_limit = idx + win_size
-        entries = dataset[idx:upper_limit]
+    for idx in range(win_size , row_count):
+        lower_limit = idx - win_size
+        entries = dataset[lower_limit:idx]
         row = []
         for entry in entries:
             row.append(entry)
         win_matrix.append(row)
+    # win_matrix.reverse()
     return numpy.array(win_matrix)
-
 
 numpy.random.seed(7)
 
@@ -118,8 +118,11 @@ normalize_dataset(vars_ds)
 normalize_dataset(demand_ds)
 
 column_count = vars_ds.shape[1] # Cantidad de columnas del dataset de entrada
-timesteps = 6
+timesteps = 10 # cantidad de pasos memoria
 vars_ds = build_win_matrix(vars_ds , timesteps)
+# hago coincidir los dias y las demandas con la nueva matriz de ventana
+dates_ds = dates_ds[timesteps:]
+demand_ds = demand_ds[timesteps:]
 
 # reshape hacia (CANT_FILAS, CANT_ESTADOS = 1 , CANT_COLUMNAS)
 # este reshape se hace para trabajar con LSTM con timesteps == 1
@@ -130,7 +133,7 @@ vars_ds = build_win_matrix(vars_ds , timesteps)
 # test_size = len(vars_ds) - train_size
 
 train_size = 675
-test_size = 365
+test_size = 60
 
 
 train_lower_limit = 0
@@ -164,7 +167,7 @@ model = Sequential()
 # batch_size = 5
 batch_size = gcd(train_size , test_size)
 
-model.add(LSTM(4, stateful=True, batch_input_shape=(batch_size, timesteps, column_count)))
+model.add(LSTM(20, stateful=True, batch_input_shape=(batch_size, timesteps, column_count)))
 # model.add(LSTM(50, input_shape=(1,vars_ds.shape[2]) , stateful=True, batch_input_shape=(batch_size,1,vars_ds.shape[2])) )
 model.add(Dense(30, activation='relu'))
 model.add(Dense(2, activation='relu'))
@@ -211,11 +214,12 @@ tick_spacing = 12
 major_ticks = numpy.linspace(date2num(start_date), date2num(end_date), tick_spacing)  # obtengo un arreglo con los valores de fecha que quiero mostrar
 major_tick_labels = [date.strftime("%Y-%m") for date in num2date(major_ticks)]
 
-# PLOTEO DE LA DEMANDA DE SALIDA JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
+# PLOTEO DE LA DEMANDA DE SALIDA NORMALIZADA JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
 true_out_demand = demand_ds[test_lower_limit:test_upper_limit, 1]
 predicted_out_demand = predicted[:, 1]
 plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b'), (predicted_out_demand, 'r')])
 plt.show()
+
 
 # PLOTEO LA DIFERENCIA ABSOLUTA ENTRE VALORES REALES Y LOS VALORES PREDECIDOS NORMALIZADOS -----------------------------------------
 # error_ds = true_out_demand - predicted_out_demand
@@ -226,31 +230,32 @@ plt.show()
 # plt.show()
 
 # PLOTEO EL ERROR COMETIDO ----------------------------------------------------------------------------------------------------------
-denormalized_true_out_demand = de_normalize_dataset(test_demand.copy() , demand_df.values)[:,1]
-denormalized_predicted_out_demand = denormalized_predicted[:, 1] 
+# denormalized_true_out_demand = demand_df.values[test_lower_limit+timesteps:test_upper_limit+timesteps, 1] 
+denormalized_true_out_demand = de_normalize_dataset(test_demand.copy() , demand_df.values)[:,1] 
+denormalized_predicted_out_demand = denormalized_predicted[:test_size, 1] 
+
+# PLOTEO DE LA DEMANDA DE SALIDA REAL JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(denormalized_true_out_demand, 'b-o'), (denormalized_predicted_out_demand, 'r-o')])
+plt.show()
+
 
 # ERROR USANDO LOS VALORES NORMALIZADOS
 diff = true_out_demand - predicted_out_demand
 diff = abs(diff)
-plus_one = true_out_demand + 1
+plus_one = true_out_demand + 0.001
 error_ds = diff / plus_one
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
 # ERROR USANDO LOS VALORES DES-NORMALIZADOS
-# diff = denormalized_true_out_demand - denormalized_predicted_out_demand
-# diff = abs(diff)
-# plus_one = denormalized_true_out_demand + 1
-# error_ds = diff / plus_one
+diff = denormalized_true_out_demand - denormalized_predicted_out_demand
+diff = abs(diff)
+plus_one = denormalized_true_out_demand + 1
+error_ds = diff / plus_one
 # # error_ds = diff / denormalized_true_out_demand
-# plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
-# axes = plt.gca()
-# axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
-# plt.show()
-
-# PLOTEO LOS VALORES PREDECIDOS Y LOS ORIGINALES DES-NORMALIZADOS -----------------------------------------------------------------------------
-graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(denormalized_true_out_demand / 1000, 'b'), (denormalized_predicted_out_demand / 1000, 'r')])
-graph.set_ylabel('Dinero en MILES')
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
+axes = plt.gca()
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
