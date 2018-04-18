@@ -15,32 +15,14 @@ from matplotlib.dates import num2date
 
 from fractions import gcd
 
+from skmatrix import normalizer
+
 def normalize_dataset(dataset):
-    """ Normaliza un dataset """
-    col_count = dataset.shape[1]
-    for col in range(col_count):
-        sub_ds = dataset[:, col]
-        n_ds = sub_ds / float(max(sub_ds))
-        dataset[:, col] = n_ds
-    return dataset
+    return normalizer.normalize_dataset(dataset)
 
 
 def de_normalize_dataset(normalized_ds, original_ds):
-    """ 
-    Des-normaliza un dataset a partir del dataset original (completo) 
-    :param normalized_ds : Dataset normalizado a des-normalizar
-    :param original_ds : Dataset ORIGINAL (no particionado) del cual obtener los valores originales
-    :return : Dataset des-normalizado
-    """
-    col_count = original_ds.shape[1]
-    for col in range(col_count):
-        original_sub_ds = original_ds[:, col]
-        min_value = min(original_sub_ds)
-        max_value = max(original_sub_ds)
-        a = normalized_ds[:, col] * max_value
-        b = a + min_value
-        normalized_ds[:, col] = b
-    return normalized_ds
+    return normalizer.de_normalize_dataset(normalized_ds, original_ds)
 
 
 def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots):
@@ -74,6 +56,7 @@ def append_prev_demand(vars_ds, demand_ds):
         out_demands.append((prev_entry[1], ))
     return numpy.hstack((vars_ds, numpy.array(in_demands), numpy.array(out_demands)))
 
+
 numpy.random.seed(7)
 
 # COLUMNAS:
@@ -87,7 +70,7 @@ dates_ds = pandas.read_csv('full_data.csv', usecols=[2, 3, 4]).values
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
 
-vars_ds = append_prev_demand(vars_ds , demand_ds)
+vars_ds = append_prev_demand(vars_ds, demand_ds)
 
 # PRUEBA REMOVIENDO LOS REGISTROS CON DEMANDA 0
 # t = demand_ds[:,0]
@@ -99,12 +82,11 @@ vars_ds = append_prev_demand(vars_ds , demand_ds)
 normalize_dataset(vars_ds)
 normalize_dataset(demand_ds)
 
-column_count = vars_ds.shape[1] # Cantidad de columnas del dataset de entrada
+column_count = vars_ds.shape[1]  # Cantidad de columnas del dataset de entrada
 
 # The code below calculates the index of the split point and separates the data into the training datasets with 67% of the observations that we can use to train our model, leaving the remaining 33% for testing the model
 test_size = 30
-train_size = 365 * 2 
-
+train_size = 365 * 2
 
 train_lower_limit = 0
 train_upper_limit = train_size
@@ -119,18 +101,17 @@ train_demand = demand_ds[train_lower_limit:train_upper_limit]
 test_vars = vars_ds[test_lower_limit:test_upper_limit]
 test_demand = demand_ds[test_lower_limit:test_upper_limit]
 
-
 # Keras de manera implicita trabaja siempre con una capa de entrada
 # input_dim determina la cantidad de neuronas de la capa de entrada
 # el primer parametro de 'Dense' es la cantidad de neuronas de la capa oculta
 # una red densa o Dense es aquella en la que todas las neuronas de una capa N estan conectadas con todas las de la capa N+1
-# el modelo a crear es Multilayer Perceptron 
+# el modelo a crear es Multilayer Perceptron
 # la cantidad de neuronas de la capa de salida debe coincidir con la cantidad de valores a predecir
 # Si la ultima capa tiene una funcion de activacion, entonces estamos modelando un problema de CLASIFICACION / CLUSTERIZACION en vez de uno de PREDICCION
 # epochs es el número de pasadas por todo el conjunto de datos de entrenamiento
 # batch_size es el número de muestras que se usan para calcular una actualización de los pesos
 
-input_dim = column_count # la cantidad de neuronas de input es igual a la cantidad de columnas del dataset de entrada
+input_dim = column_count  # la cantidad de neuronas de input es igual a la cantidad de columnas del dataset de entrada
 model = Sequential()
 model.add(Dense(20, input_dim=input_dim, activation='relu'))
 model.add(Dense(10, activation='relu'))
@@ -140,7 +121,6 @@ opt = optimizers.adam(lr=0.001)
 # model.compile(loss='binary_crossentropy', optimizer=opt)
 model.compile(loss='mean_squared_error', optimizer=opt)
 model.fit(train_vars, train_demand, epochs=200, batch_size=5, verbose=2)
-
 
 # trainPredict = model.predict(train_vars)
 predicted = model.predict(test_vars)
@@ -162,15 +142,14 @@ true_out_demand = demand_ds[test_lower_limit:test_upper_limit, 1]
 predicted_out_demand = predicted[:, 1]
 plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b-o'), (predicted_out_demand, 'r-o')])
 axes = plt.gca()
-axes.set_ylim([0, 1]) # seteo limite en el eje y entre 0 y 1
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
-
 
 # PLOTEO DEL ERROR ---------------------------------------------------------------------------------------------------
 diff = true_out_demand - predicted_out_demand
 diff = abs(diff)
 error_ds = diff / predicted_out_demand
-plt.plot(error_ds , 'r-o')
+plt.plot(error_ds, 'r-o')
 # axes = plt.gca()
 # axes.set_ylim([0, 1]) # seteo limite en el eje y entre 0 y 1
 plt.show()

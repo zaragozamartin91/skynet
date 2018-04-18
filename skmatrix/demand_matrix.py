@@ -191,38 +191,50 @@ def no_demand(out_demand):
     return out_demand < 1.0
 
 
+def get_net_demand(dataset):
+    in_demand = dataset[:, IN_DEMAND_IDX]
+    out_demand = dataset[:, OUT_DEMAND_IDX]
+    net_demand = in_demand - out_demand
+    row_count = len(net_demand)
+    return net_demand.reshape((row_count, 1))
+
+
 # ELIMINACION DE ENTRADAS -----------------------------------------------------------------------------------------------------
 
-def remove_max_spikes(dataset , order):
+
+def remove_max_spikes(dataset, order):
     """ Asigna valores promedio a los picos maximos de demanda de entrada y salida que superen el orden indicado respecto de la media """
-    ind_mean = dataset[:,IN_DEMAND_IDX].mean()
-    outd_mean = dataset[:,OUT_DEMAND_IDX].mean()
+    ind_mean = dataset[:, IN_DEMAND_IDX].mean()
+    outd_mean = dataset[:, OUT_DEMAND_IDX].mean()
     for entry in dataset:
         out_demand = get_out_demand(entry)
-        if(out_demand / ind_mean > order): set_out_demand(entry , ind_mean)
+        if (out_demand / ind_mean > order): set_out_demand(entry, ind_mean)
         in_demand = get_in_demand(entry)
-        if(in_demand / outd_mean > order): set_in_demand(entry, outd_mean)
+        if (in_demand / outd_mean > order): set_in_demand(entry, outd_mean)
     return dataset
 
-def remove_min_spikes(dataset , order):
+
+def remove_min_spikes(dataset, order):
     """ Asigna valores promedio a los picos minimos de demanda de entrada y salida que superen el orden indicado respecto de la media """
-    ind_mean = dataset[:,IN_DEMAND_IDX].mean()
-    outd_mean = dataset[:,OUT_DEMAND_IDX].mean()
+    ind_mean = dataset[:, IN_DEMAND_IDX].mean()
+    outd_mean = dataset[:, OUT_DEMAND_IDX].mean()
     for entry in dataset:
         out_demand = get_out_demand(entry)
-        if(out_demand / ind_mean < order): set_out_demand(entry , ind_mean)
+        if (out_demand / ind_mean < order): set_out_demand(entry, ind_mean)
         in_demand = get_in_demand(entry)
-        if(in_demand / outd_mean < order): set_in_demand(entry, outd_mean)
+        if (in_demand / outd_mean < order): set_in_demand(entry, outd_mean)
     return dataset
+
 
 def remove_zero_demand_entries(dataset):
     """ Crea un nuevo dataset sin las entradas con valores de demanda cercanos a cero """
-    outd = dataset[:,OUT_DEMAND_IDX]
+    outd = dataset[:, OUT_DEMAND_IDX]
     b1 = outd > 1.0
     ds1 = dataset[b1]
-    ind = ds1[:,IN_DEMAND_IDX]
+    ind = ds1[:, IN_DEMAND_IDX]
     b2 = ind > 1.0
     return ds1[b2]
+
 
 # GETTERS DE entry -----------------------------------------------------------------------------------------------------
 
@@ -239,6 +251,7 @@ def get_date(entry):
 
 def get_out_demand(entry):
     return entry[OUT_DEMAND_IDX]
+
 
 def get_in_demand(entry):
     return entry[IN_DEMAND_IDX]

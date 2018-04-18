@@ -13,34 +13,16 @@ from datetime import datetime
 from matplotlib.dates import date2num
 from matplotlib.dates import num2date
 
+from skmatrix import normalizer
+
+
 
 def normalize_dataset(dataset):
-    """ Normaliza un dataset """
-    col_count = dataset.shape[1]
-    for col in range(col_count):
-        sub_ds = dataset[:, col]
-        n_ds = sub_ds / float(max(sub_ds))
-        dataset[:, col] = n_ds
-    return dataset
+    return normalizer.normalize_dataset(dataset)
 
 
 def de_normalize_dataset(normalized_ds, original_ds):
-    """ 
-    Des-normaliza un dataset a partir del dataset original (completo) 
-    :param normalized_ds : Dataset normalizado a des-normalizar
-    :param original_ds : Dataset ORIGINAL (no particionado) del cual obtener los valores originales
-    :return : Dataset des-normalizado
-    """
-    col_count = original_ds.shape[1]
-    for col in range(col_count):
-        original_sub_ds = original_ds[:, col]
-        min_value = min(original_sub_ds)
-        max_value = max(original_sub_ds)
-        a = normalized_ds[:, col] * max_value
-        b = a + min_value
-        normalized_ds[:, col] = b
-    return normalized_ds
-
+    return normalizer.de_normalize_dataset(normalized_ds, original_ds)
 
 def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots):
     """ 
@@ -58,7 +40,6 @@ def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots):
     graph.set_xticks(major_xticks)
     graph.set_xticklabels(major_xticks_labels)
     return graph
-    
 
 
 def append_prev_demand(vars_ds, demand_ds):
@@ -154,7 +135,7 @@ model.fit(train_vars, train_demand, epochs=200, batch_size=batch_size, shuffle=F
 
 # trainPredict = model.predict(train_vars)
 predicted = model.predict(test_vars, batch_size=batch_size)
-denormalized_predicted = de_normalize_dataset(predicted.copy() , demand_df.values)
+denormalized_predicted = de_normalize_dataset(predicted.copy(), demand_df.values)
 
 # PLOTEO DE LA DEMANDA DE ENTRADA JUNTO CON TODOS LOS DATOS -----------------------------------------
 # ind = demand_ds[:,0]
@@ -196,8 +177,6 @@ plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
-
-
 
 denormalized_true_out_demand = demand_df.values[test_lower_limit:test_upper_limit, 1] / 1000
 denormalized_predicted_out_demand = denormalized_predicted[:, 1] / 1000
