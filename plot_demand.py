@@ -9,8 +9,9 @@ if(len(sys.argv) < 2):
 
 input_file = sys.argv[1]
 
-# we can exclude with the skipfooter argument to pandas.read_csv() set to 3 for the 3 footer lines
-dataframe = pandas.read_csv(input_file, delimiter=';' ,usecols=[5,6], engine='python')
+#  0    1   2    3     4      5         6          7        8
+#INDEX,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy
+dataframe = pandas.read_csv(input_file, delimiter=',' ,usecols=[5,6], engine='python')
 dataset = dataframe.values.astype('float32')
 
 DIN_IDX = 0

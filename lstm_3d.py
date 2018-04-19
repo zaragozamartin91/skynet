@@ -75,7 +75,7 @@ def build_win_matrix(dataset, win_size=1):
 
 numpy.random.seed(7)
 
-input_file = 'full_data.csv'
+input_file = 'full_entrada_salida_pesos_100.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
@@ -203,7 +203,7 @@ major_tick_labels = [date.strftime("%Y-%m") for date in num2date(major_ticks)]
 # PLOTEO DE LA DEMANDA DE SALIDA NORMALIZADA JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
 true_out_demand = demand_ds[test_lower_limit:test_upper_limit, 1]
 predicted_out_demand = predicted[:, 1]
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b'), (predicted_out_demand, 'r')])
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b-o'), (predicted_out_demand, 'r-o')])
 plt.show()
 
 # PLOTEO LA DIFERENCIA ABSOLUTA ENTRE VALORES REALES Y LOS VALORES PREDECIDOS NORMALIZADOS -----------------------------------------

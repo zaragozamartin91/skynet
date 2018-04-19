@@ -94,7 +94,7 @@ def build_win_matrix(dataset, win_size=1):
 
 numpy.random.seed(7)
 
-input_file = 'full_data.csv'
+input_file = 'full_entrada_salida_pesos_100.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
@@ -222,7 +222,7 @@ major_tick_labels = [date.strftime("%Y-%m") for date in num2date(major_ticks)]
 # PLOTEO DE LA DEMANDA DE SALIDA NORMALIZADA JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
 true_out_demand = demand_ds[test_lower_limit:test_upper_limit, 1]
 predicted_out_demand = predicted[:, 1]
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b'), (predicted_out_demand, 'r')])
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b-o'), (predicted_out_demand, 'r-o')])
 plt.show()
 
 
@@ -244,9 +244,10 @@ diff = true_out_demand - predicted_out_demand
 diff = abs(diff)
 plus_one = true_out_demand + 0.001
 error_ds = diff / plus_one
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
+graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
+graph.set_ylabel('Error con valores normalizados')
 axes = plt.gca()
-axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+# axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
 # ERROR USANDO LOS VALORES DES-NORMALIZADOS
@@ -255,7 +256,8 @@ diff = abs(diff)
 plus_one = denormalized_true_out_demand + 1
 error_ds = diff / plus_one
 # # error_ds = diff / denormalized_true_out_demand
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
+graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
+graph.set_ylabel('Error con valores des-normalizados')
 axes = plt.gca()
 axes.set_ylim([0, 2])  # seteo limite en el eje y entre 0 y 1
 plt.show()
