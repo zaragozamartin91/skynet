@@ -99,3 +99,11 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+activate
+etc
+Include
+man
+Scripts
+share
+tcl
