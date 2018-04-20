@@ -54,7 +54,8 @@ def get_timestep_demands(vars_ds, demand_ds, timesteps):
         previous_demands = demand_ds[i - timesteps:i]
         in_demands.append(previous_demands[:, 0])
         out_demands.append(previous_demands[:, 1])
-    return (numpy.array(in_demands) , numpy.array(out_demands))
+    return (numpy.array(in_demands), numpy.array(out_demands))
+
 
 numpy.random.seed(7)
 
@@ -71,10 +72,9 @@ dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
 
-
-timesteps = 5
-in_demands , out_demands = get_timestep_demands(vars_ds, demand_ds, timesteps)
-vars_ds = numpy.hstack( ( vars_ds[timesteps:] , in_demands , out_demands ) )
+timesteps = 1
+in_demands, out_demands = get_timestep_demands(vars_ds, demand_ds, timesteps)
+vars_ds = numpy.hstack((vars_ds[timesteps:], in_demands, out_demands))
 # pongo en fase los valores de las demandas y de las fechas
 demand_ds = demand_ds[timesteps:]
 dates_ds = dates_ds[timesteps:]
@@ -85,9 +85,8 @@ normalize_dataset(demand_ds)
 
 column_count = vars_ds.shape[1]  # Cantidad de columnas del dataset de entrada
 
-
-test_size = 60
-train_size = 600
+test_size = 30
+train_size = len(vars_ds) - test_size
 
 train_lower_limit = 0
 train_upper_limit = train_size
@@ -116,11 +115,11 @@ epochs = 300
 
 input_dim = column_count  # la cantidad de neuronas de input es igual a la cantidad de columnas del dataset de entrada
 model = Sequential()
-model.add(Dense(80, input_dim=input_dim, activation='relu'))
-model.add(Dense(40, activation='relu'))
-model.add(Dense(20, activation='relu'))
-model.add(Dense(10, activation='relu'))
-model.add(Dense(5, activation='relu'))
+# model.add(Dense(80, input_dim=input_dim, activation='relu'))
+# model.add(Dense(40, activation='relu'))
+# model.add(Dense(20, activation='relu'))
+model.add(Dense(input_dim, input_dim=input_dim, activation='relu'))
+model.add(Dense(int(input_dim / 2), activation='relu'))
 model.add(Dense(2, activation='relu'))
 opt = optimizers.adam(lr=0.001)
 # model.compile(loss='binary_crossentropy', optimizer=opt)
@@ -137,7 +136,7 @@ end_date = date.today().replace(true_dates[last_date_idx, 2], true_dates[last_da
 all_ticks = numpy.linspace(date2num(start_date), date2num(end_date), test_size)  # obtengo un arreglo con todos los valores numericos de fechas
 
 tick_spacing = test_size if test_size <= 60 else 12
-date_format = "%m-%d" if test_size <= 60 else "%y-%m"
+date_format = "%m/%d" if test_size <= 60 else "%y/%m"
 
 # major_ticks = numpy.arange(date2num(start_date), date2num(end_date), tick_spacing)  # obtengo un arreglo con los valores de fecha que quiero mostrar
 major_ticks = numpy.linspace(date2num(start_date), date2num(end_date), tick_spacing)  # obtengo un arreglo con los valores de fecha que quiero mostrar
@@ -157,5 +156,5 @@ diff = abs(diff)
 error_ds = diff / (predicted_out_demand + 0.0001)
 plt.plot(error_ds, 'r-o')
 axes = plt.gca()
-axes.set_ylim([0, 1]) # seteo limite en el eje y entre 0 y 1
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()

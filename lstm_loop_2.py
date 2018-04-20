@@ -15,6 +15,7 @@ from matplotlib.dates import num2date
 
 from fractions import gcd
 
+
 def normalize_dataset(dataset):
     """ Normaliza un dataset """
     col_count = dataset.shape[1]
@@ -80,19 +81,21 @@ def append_prev_demand(vars_ds, demand_ds):
     return numpy.hstack((vars_ds, numpy.array(in_demands), numpy.array(out_demands)))
 
 
-def build_win_matrix(dataset, win_size=1):
-    """ Crea una matriz tridimensional que contenga  """
+def build_win_matrix(dataset, win_size):
+    """ 
+    Crea una matriz tridimensional en la que cada entrada contiene los datos de ese dia y los datos de los win_size dias anteriores  
+    """
     win_matrix = []
     row_count = len(dataset)
-    for idx in range(win_size , row_count):
+    for idx in range(win_size, row_count):
         lower_limit = idx - win_size
-        entries = dataset[lower_limit:idx]
+        entries = dataset[lower_limit:idx + 1]
         row = []
         for entry in entries:
             row.append(entry)
         win_matrix.append(row)
-    # win_matrix.reverse()
     return numpy.array(win_matrix)
+
 
 numpy.random.seed(7)
 
@@ -124,9 +127,9 @@ vars_ds = append_prev_demand(vars_ds, demand_ds)
 normalize_dataset(vars_ds)
 normalize_dataset(demand_ds)
 
-column_count = vars_ds.shape[1] # Cantidad de columnas del dataset de entrada
-timesteps = 10 # cantidad de pasos memoria
-vars_ds = build_win_matrix(vars_ds , timesteps)
+column_count = vars_ds.shape[1]  # Cantidad de columnas del dataset de entrada
+timesteps = 10  # cantidad de pasos memoria
+vars_ds = build_win_matrix(vars_ds, timesteps)
 # hago coincidir los dias y las demandas con la nueva matriz de ventana
 dates_ds = dates_ds[timesteps:]
 demand_ds = demand_ds[timesteps:]
@@ -135,13 +138,12 @@ demand_ds = demand_ds[timesteps:]
 # este reshape se hace para trabajar con LSTM con timesteps == 1
 # vars_ds = vars_ds.reshape((len(vars_ds), 1, column_count))
 
-
 # train_size = int(len(vars_ds) * 0.67)
 # test_size = len(vars_ds) - train_size
 
-train_size = 675
-test_size = 60
-
+test_size = 30
+train_size = len(vars_ds) - test_size
+# train_size = 675
 
 train_lower_limit = 0
 train_upper_limit = train_size
@@ -174,8 +176,8 @@ model = Sequential()
 # batch_size = 5
 # batch_size = gcd(train_size , test_size)
 batch_size = 1
-epochs=200
-model.add(LSTM(20, stateful=True, batch_input_shape=(batch_size, timesteps, column_count)))
+epochs = 200
+model.add(LSTM(20, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
 # model.add(LSTM(50, input_shape=(1,vars_ds.shape[2]) , stateful=True, batch_input_shape=(batch_size,1,vars_ds.shape[2])) )
 model.add(Dense(30, activation='relu'))
 model.add(Dense(2, activation='relu'))
@@ -189,30 +191,23 @@ predicted = []
 
 # idx = 0
 test_var = test_vars[idx:idx + 1]
-predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((2,))
+predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((2, ))
 predicted.append(predicted_entry)
 idx += 1
 
-# idx = 1
-test_var = test_vars[idx:idx + 1]
-predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((2,))
-predicted.append(predicted_entry)
-idx += 1
-
-
-for idx in range(2, test_size):
-    test_var = test_vars[idx:idx + 1]
-    start_ts = timesteps - idx + 1 if timesteps - idx + 1 >=0 else 0
-    end_ts = idx - 1 if idx - 1 <= timesteps else timesteps
-    print("start_ts: %d , end_ts: %d" % (start_ts , end_ts))
-    test_var[0, start_ts:, 5:] = predicted[:end_ts]
-    # test_var[0, timesteps - 1, 5:] = predicted[0]
-    predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((2,))
+for idx in range(1,test_size):
+    test_var = test_vars[idx:idx + 1] # obtengo la entrada sobre la cual voy a hacer la prediccion
+    start_ts = 0 if (timesteps - idx + 1 <= 0) else (timesteps - idx + 1)
+    end_ts = timesteps + 1 + 1 # si recuerdo 10 dias , entonces tengo 11 elementos (10 pasados + 1 actual)
+    start_pred = 0 if (idx - timesteps - 1 <= 0) else idx - timesteps - 1
+    end_pred = idx
+    test_var[0, start_ts : end_ts, 5:] = predicted[start_pred:end_pred]
+    predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((2, ))
     predicted.append(predicted_entry)
+    print('start_ts: %d , end_ts: %d , start_pred: %d , end_pred: %d' % (start_ts , end_ts, start_pred , end_pred))
 
 
 predicted = numpy.array(predicted)
-
 
 # trainPredict = model.predict(train_vars)
 # predicted = model.predict(test_vars, batch_size=batch_size)
@@ -252,7 +247,6 @@ predicted_out_demand = predicted[:, 1]
 plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b'), (predicted_out_demand, 'r')])
 plt.show()
 
-
 # PLOTEO LA DIFERENCIA ABSOLUTA ENTRE VALORES REALES Y LOS VALORES PREDECIDOS NORMALIZADOS -----------------------------------------
 # error_ds = true_out_demand - predicted_out_demand
 # error_ds = abs(error_ds)
@@ -262,9 +256,8 @@ plt.show()
 # plt.show()
 
 # PLOTEO EL ERROR COMETIDO ----------------------------------------------------------------------------------------------------------
-denormalized_true_out_demand = de_normalize_dataset(test_demand.copy() , demand_df.values)[:,1] 
-denormalized_predicted_out_demand = denormalized_predicted[:test_size, 1] 
-
+denormalized_true_out_demand = de_normalize_dataset(test_demand.copy(), demand_df.values)[:, 1]
+denormalized_predicted_out_demand = denormalized_predicted[:test_size, 1]
 
 # ERROR USANDO LOS VALORES NORMALIZADOS
 diff = true_out_demand - predicted_out_demand

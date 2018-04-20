@@ -59,13 +59,15 @@ def append_prev_demand(vars_ds, demand_ds):
 
 numpy.random.seed(7)
 
+input_file = 'full_entrada_salida_pesos_100.csv'
+
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
 # index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
-vars_df = pandas.read_csv('full_data.csv', usecols=[1, 2, 3, 7, 8])
-demand_df = pandas.read_csv('full_data.csv', usecols=[5, 6])
+vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
+demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
-dates_ds = pandas.read_csv('full_data.csv', usecols=[2, 3, 4]).values
+dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
@@ -148,7 +150,8 @@ plt.show()
 # PLOTEO DEL ERROR ---------------------------------------------------------------------------------------------------
 diff = true_out_demand - predicted_out_demand
 diff = abs(diff)
-error_ds = diff / predicted_out_demand
+plus_one = predicted_out_demand + 0.001
+error_ds = diff / plus_one
 plt.plot(error_ds, 'r-o')
 # axes = plt.gca()
 # axes.set_ylim([0, 1]) # seteo limite en el eje y entre 0 y 1
