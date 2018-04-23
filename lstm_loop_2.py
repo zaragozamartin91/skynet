@@ -116,12 +116,10 @@ demand_ds = demand_df.values.astype('float64')
 
 # Agrego los valores de la demanda de entrada y salida previas
 vars_ds = append_prev_demand(vars_ds, demand_ds)
+# Descarto el primer dia dado que no cuenta con demanda previa o su demanda previa es un falso 0.0
+vars_ds = vars_ds[1:]
+demand_ds = demand_ds[1:]
 
-# PRUEBA REMOVIENDO LOS REGISTROS CON DEMANDA 0
-# t = demand_ds[:,0]
-# b = t > 1.0
-# vars_ds = vars_ds[b]
-# demand_ds = demand_ds[b]
 
 # Asigno valores de 0 a 1 a todas las entradas
 normalize_dataset(vars_ds)
@@ -167,6 +165,7 @@ test_demand = demand_ds[test_lower_limit:test_upper_limit]
 # Si la ultima capa tiene una funcion de activacion, entonces estamos modelando un problema de CLASIFICACION / CLUSTERIZACION en vez de uno de PREDICCION
 # epochs es el número de pasadas por todo el conjunto de datos de entrenamiento
 # batch_size es el número de muestras que se usan para calcular una actualización de los pesos
+# LA CAPA N+1 NO DEBERIA SER MAS GRANDE QUE LA CAPA N
 
 # input_dim = train_vars.shape[1] # la cantidad de neuronas de input es igual a la cantidad de columnas del dataset de entrada
 model = Sequential()
@@ -177,13 +176,13 @@ model = Sequential()
 # batch_size = gcd(train_size , test_size)
 batch_size = 1
 epochs = 200
-model.add(LSTM(20, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
+model.add(LSTM(30, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
 # model.add(LSTM(50, input_shape=(1,vars_ds.shape[2]) , stateful=True, batch_input_shape=(batch_size,1,vars_ds.shape[2])) )
 model.add(Dense(30, activation='relu'))
 model.add(Dense(2, activation='relu'))
 opt = optimizers.adam(lr=0.001)
 model.compile(loss='binary_crossentropy', optimizer=opt)
-#model.compile(loss='mean_squared_error', optimizer=opt)
+# model.compile(loss='mean_squared_error', optimizer=opt)
 model.fit(train_vars, train_demand, epochs=epochs, batch_size=batch_size, shuffle=False, verbose=2)
 
 idx = 0
@@ -244,7 +243,7 @@ major_tick_labels = [date.strftime("%Y-%m") for date in num2date(major_ticks)]
 # PLOTEO DE LA DEMANDA DE SALIDA NORMALIZADA JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
 true_out_demand = demand_ds[test_lower_limit:test_upper_limit, 1]
 predicted_out_demand = predicted[:, 1]
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b'), (predicted_out_demand, 'r')])
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b-o'), (predicted_out_demand, 'r-o')])
 plt.show()
 
 # PLOTEO LA DIFERENCIA ABSOLUTA ENTRE VALORES REALES Y LOS VALORES PREDECIDOS NORMALIZADOS -----------------------------------------
@@ -264,7 +263,8 @@ diff = true_out_demand - predicted_out_demand
 diff = abs(diff)
 plus_one = true_out_demand + 0.001
 error_ds = diff / plus_one
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
+graph=plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
+graph.set_title('Error con valores normalizados')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
@@ -275,20 +275,14 @@ diff = abs(diff)
 plus_one = denormalized_true_out_demand + 1
 error_ds = diff / plus_one
 # # error_ds = diff / denormalized_true_out_demand
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
+graph=plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
+graph.set_title('Error con valores DES-normalizados')
 axes = plt.gca()
-axes.set_ylim([0, 2])  # seteo limite en el eje y entre 0 y 1
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
-# ERROR EN VALORES DES-NORMALIZADOS
-diff = denormalized_true_out_demand - denormalized_predicted_out_demand
-diff = abs(diff)
-error_ds = diff
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
-axes = plt.gca()
-plt.show()
 
 # PLOTEO LOS VALORES PREDECIDOS Y LOS ORIGINALES DES-NORMALIZADOS (en miles de pesos) -----------------------------------------------------------------------------
-graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(denormalized_true_out_demand / 1000, 'b'), (denormalized_predicted_out_demand / 1000, 'r')])
+graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(denormalized_true_out_demand / 1000, 'b-o'), (denormalized_predicted_out_demand / 1000, 'r')])
 graph.set_ylabel('Dinero en MILES')
 plt.show()

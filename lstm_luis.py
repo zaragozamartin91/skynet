@@ -114,6 +114,9 @@ demand_ds = demand_df.values.astype('float64')
 
 # Agrego los valores de la demanda de entrada y salida previas
 vars_ds = append_prev_demand(vars_ds, demand_ds)
+# Descarto el primer dia dado que no cuenta con demanda previa o su demanda previa es un falso 0.0
+vars_ds = vars_ds[1:]
+demand_ds = demand_ds[1:]
 
 # PRUEBA REMOVIENDO LOS REGISTROS CON DEMANDA 0
 # t = demand_ds[:,0]
@@ -249,7 +252,7 @@ error_ds = diff / plus_one
 graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
 graph.set_ylabel('Error con valores normalizados')
 axes = plt.gca()
-# axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
 # ERROR USANDO LOS VALORES DES-NORMALIZADOS

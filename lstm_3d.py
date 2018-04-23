@@ -85,12 +85,9 @@ DOW_IDX, DOM_IDX, MONTH_IDX, PREVHOLY_IDX, POSTHOLY_IDX = range(vars_ds.shape[1]
 
 # Agrego los valores de la demanda de entrada y salida previas
 vars_ds = append_prev_demand(vars_ds, demand_ds)
-
-# PRUEBA REMOVIENDO LOS REGISTROS CON DEMANDA 0
-# t = demand_ds[:,0]
-# b = t > 1.0
-# vars_ds = vars_ds[b]
-# demand_ds = demand_ds[b]
+# Descarto el primer dia dado que no cuenta con demanda previa o su demanda previa es un falso 0.0
+vars_ds = vars_ds[1:]
+demand_ds = demand_ds[1:]
 
 # Asigno valores de 0 a 1 a todas las entradas
 normalize_dataset(vars_ds)
@@ -103,14 +100,7 @@ vars_ds = build_win_matrix(vars_ds, timesteps)
 dates_ds = dates_ds[timesteps:]
 demand_ds = demand_ds[timesteps:]
 
-# reshape hacia (CANT_FILAS, CANT_ESTADOS = 1 , CANT_COLUMNAS)
-# este reshape se hace para trabajar con LSTM con timesteps == 1
-# vars_ds = vars_ds.reshape((len(vars_ds), 1, column_count))
-
-# train_size = int(len(vars_ds) * 0.67)
-# test_size = len(vars_ds) - train_size
-
-batch_size = 10
+batch_size = 5
 test_size = 30
 train_size = batch_size * int((len(vars_ds) - test_size) / batch_size)
 
