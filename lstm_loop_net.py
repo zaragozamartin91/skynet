@@ -23,8 +23,9 @@ def normalize_dataset(dataset):
         sub_ds = dataset[:, col]
         max_value = float(max(sub_ds))
         min_value = float(min(sub_ds))
+        diff = max_value - min_value
         n_ds = sub_ds - min_value
-        n_ds = n_ds / max_value
+        n_ds = n_ds / diff
         dataset[:, col] = n_ds
     return dataset
 
@@ -41,7 +42,8 @@ def de_normalize_dataset(normalized_ds, original_ds):
         original_sub_ds = original_ds[:, col]
         min_value = min(original_sub_ds)
         max_value = max(original_sub_ds)
-        a = normalized_ds[:, col] * max_value
+        diff = max_value - min_value
+        a = normalized_ds[:, col] * diff
         b = a + min_value
         normalized_ds[:, col] = b
     return normalized_ds
@@ -66,17 +68,14 @@ def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots):
 
 
 def append_prev_demand(vars_ds, demand_ds):
-    """ Crea un nuevo dataset que contenga los valores de las variables de entrada y dos columnas extra que representan las demandas del dia anterior
-    de entrada y salida respectivamente """
+    """ Crea un nuevo dataset que contenga los valores de las variables de entrada y una columna extra que representa la demanda neta del dia anterior """
     in_demands = [(0, )]
-    out_demands = [(0, )]
     row_count = len(vars_ds)
     for i in range(row_count):
         if (i == 0): continue
         prev_entry = demand_ds[i - 1]
         in_demands.append((prev_entry[0], ))
-        out_demands.append((prev_entry[1], ))
-    return numpy.hstack((vars_ds, numpy.array(in_demands), numpy.array(out_demands)))
+    return numpy.hstack((vars_ds, numpy.array(in_demands)))
 
 
 def build_win_matrix(dataset, win_size):
@@ -97,13 +96,16 @@ def build_win_matrix(dataset, win_size):
 
 numpy.random.seed(7)
 
-input_file = 'full_entrada_salida_pesos_100.csv'
+input_file = 'full_entrada_salida_pesos_506.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
 # index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
 vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
 demand_df = pandas.read_csv(input_file, usecols=[5, 6])
+
+DIFF_DEMAND = demand_df.values[:,0] - demand_df.values[:,1]
+DIFF_DEMAND.resize( (len(DIFF_DEMAND) , 1) )
 
 #  0     1   2    3     4         5      6         7          8      9
 # index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
@@ -112,18 +114,17 @@ dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
 
+in_demand = demand_ds[:, 0]
+out_demand = demand_ds[:, 1]
+demand_ds = in_demand - out_demand
+demand_ds.resize((len(demand_ds), 1))
+
 # Agrego los valores de la demanda de entrada y salida previas
 vars_ds = append_prev_demand(vars_ds, demand_ds)
 # Descarto el primer dia dado que no cuenta con demanda previa o su demanda previa es un falso 0.0
 vars_ds = vars_ds[1:]
 demand_ds = demand_ds[1:]
 dates_ds = dates_ds[1:]
-
-# PRUEBA REMOVIENDO LOS REGISTROS CON DEMANDA 0
-# t = demand_ds[:,0]
-# b = t > 1.0
-# vars_ds = vars_ds[b]
-# demand_ds = demand_ds[b]
 
 # Asigno valores de 0 a 1 a todas las entradas
 normalize_dataset(vars_ds)
@@ -143,10 +144,9 @@ dates_ds = dates_ds[timesteps:]
 # train_size = int(len(vars_ds) * 0.67)
 # test_size = len(vars_ds) - train_size
 
-batch_size = 5
 test_size = 30
-tr_ts_size_diff = len(vars_ds) - test_size
-train_size = batch_size * int(tr_ts_size_diff / batch_size)
+train_size = len(vars_ds) - test_size
+# train_size = 675
 
 train_lower_limit = 0
 train_upper_limit = train_size
@@ -160,6 +160,7 @@ train_demand = demand_ds[train_lower_limit:train_upper_limit]
 
 test_vars = vars_ds[test_lower_limit:test_upper_limit]
 test_demand = demand_ds[test_lower_limit:test_upper_limit]
+true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a graficar
 
 # Keras de manera implicita trabaja siempre con una capa de entrada
 # input_dim determina la cantidad de neuronas de la capa de entrada
@@ -170,113 +171,112 @@ test_demand = demand_ds[test_lower_limit:test_upper_limit]
 # Si la ultima capa tiene una funcion de activacion, entonces estamos modelando un problema de CLASIFICACION / CLUSTERIZACION en vez de uno de PREDICCION
 # epochs es el número de pasadas por todo el conjunto de datos de entrenamiento
 # batch_size es el número de muestras que se usan para calcular una actualización de los pesos
+# LA CAPA N+1 NO DEBERIA SER MAS GRANDE QUE LA CAPA N
 
 # input_dim = train_vars.shape[1] # la cantidad de neuronas de input es igual a la cantidad de columnas del dataset de entrada
 model = Sequential()
 
 # keras.layers.LSTM(units, activation='tanh', recurrent_activation='hard_sigmoid', use_bias=True, kernel_initializer='glorot_uniform', recurrent_initializer='orthogonal', bias_initializer='zeros', unit_forget_bias=True, kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, recurrent_constraint=None, bias_constraint=None, dropout=0.0, recurrent_dropout=0.0, implementation=1, return_sequences=False, return_state=False, go_backwards=False, stateful=False, unroll=False)
 
-
+# batch_size = 5
+# batch_size = gcd(train_size , test_size)
+batch_size = 1
+epochs = 200
 model.add(LSTM(30, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
 # model.add(LSTM(50, input_shape=(1,vars_ds.shape[2]) , stateful=True, batch_input_shape=(batch_size,1,vars_ds.shape[2])) )
 model.add(Dense(30, activation='relu'))
-model.add(Dense(2, activation='relu'))
+model.add(Dense(1, activation='relu'))
 opt = optimizers.adam(lr=0.001)
 model.compile(loss='binary_crossentropy', optimizer=opt)
-#model.compile(loss='mean_squared_error', optimizer=opt)
-model.fit(train_vars, train_demand, epochs=300, batch_size=batch_size, shuffle=False, verbose=2)
+# model.compile(loss='mean_squared_error', optimizer=opt)
+model.fit(train_vars, train_demand, epochs=epochs, batch_size=batch_size, shuffle=False, verbose=2)
 
-# Estimate model performance
-# trainScore = model.evaluate(train_vars, train_demand, verbose=0)
-# print('Train Score: %.2f MSE (%.2f RMSE)' % (trainScore, math.sqrt(trainScore)))
-# testScore = model.evaluate(test_vars, test_demand, verbose=0,batch_size=batch_size)
-# print('Test Score: %.2f MSE (%.2f RMSE)' % (testScore, math.sqrt(testScore)))
+idx = 0
+predicted = []
+
+# idx = 0
+test_var = test_vars[idx:idx + 1]
+predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((1, ))
+predicted.append(predicted_entry)
+idx += 1
+
+for idx in range(1, test_size):
+    test_var = test_vars[idx:idx + 1]  # obtengo la entrada sobre la cual voy a hacer la prediccion
+    start_ts = 0 if (timesteps - idx + 1 <= 0) else (timesteps - idx + 1)
+    end_ts = timesteps + 1 + 1  # si recuerdo 10 dias , entonces tengo 11 elementos (10 pasados + 1 actual)
+    start_pred = 0 if (idx - timesteps - 1 <= 0) else idx - timesteps - 1
+    end_pred = idx
+    test_var[0, start_ts:end_ts, 5:] = predicted[start_pred:end_pred]
+    predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((1, ))
+    predicted.append(predicted_entry)
+    print('start_ts: %d , end_ts: %d , start_pred: %d , end_pred: %d' % (start_ts, end_ts, start_pred, end_pred))
+
+predicted = numpy.array(predicted)
 
 # trainPredict = model.predict(train_vars)
-predicted = model.predict(test_vars, batch_size=batch_size)
-denormalized_predicted = de_normalize_dataset(predicted.copy(), demand_df.values)
+# predicted = model.predict(test_vars, batch_size=batch_size)
+denormalized_predicted = de_normalize_dataset(predicted.copy(), DIFF_DEMAND)
 
-# PLOTEO DE LA DEMANDA DE ENTRADA JUNTO CON TODOS LOS DATOS -----------------------------------------
-# ind = demand_ds[:,0]
-# ind_predicted = numpy.empty_like(ind)
-# ind_predicted[:] = numpy.nan
-# ind_predicted[train_size:] = predicted[:,0]
 
-# plt.plot(ind)
-# plt.plot(ind_predicted)
 
-# PLOTEO DE LA DEMANDA DE SALIDA JUNTO CON TODOS LOS DATOS -----------------------------------------
-# outd = demand_ds[:,1]
-# outd_predicted = numpy.empty_like(outd)
-# outd_predicted[:] = numpy.nan
-# outd_predicted[train_size:] = predicted[:,1]
-
-# plt.plot(outd)
-# plt.plot(outd_predicted)
-
-tick_spacing = test_size if test_size <= 60 else 12
-date_format = "%m/%d" if test_size <= 60 else "%y/%m"
-
-true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a graficar
 last_date_idx = test_size - 1
 start_date = date.today().replace(true_dates[0, 2], true_dates[0, 1], true_dates[0, 0])  # obtengo la fecha de inicio
 end_date = date.today().replace(true_dates[last_date_idx, 2], true_dates[last_date_idx, 1], true_dates[last_date_idx, 0])  # obtengo la fecha de fin
 all_ticks = numpy.linspace(date2num(start_date), date2num(end_date), test_size)  # obtengo un arreglo con todos los valores numericos de fechas
+
+tick_spacing = test_size if test_size <= 60 else 12
+date_format = "%m/%d" if test_size <= 60 else "%y/%m"
 
 # major_ticks = numpy.arange(date2num(start_date), date2num(end_date), tick_spacing)  # obtengo un arreglo con los valores de fecha que quiero mostrar
 major_ticks = numpy.linspace(date2num(start_date), date2num(end_date), tick_spacing)  # obtengo un arreglo con los valores de fecha que quiero mostrar
 major_tick_labels = [date.strftime(date_format) for date in num2date(major_ticks)]
 
 # PLOTEO DE LA DEMANDA DE SALIDA NORMALIZADA JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
-true_out_demand = demand_ds[test_lower_limit:test_upper_limit, 1]
-predicted_out_demand = predicted[:, 1]
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b-o'), (predicted_out_demand, 'r-o')])
+true_net_demand = test_demand
+predicted_net_demand = predicted
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_net_demand, 'b-o'), (predicted_net_demand, 'r-o')])
+axes = plt.gca()
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
-# PLOTEO LA DIFERENCIA ABSOLUTA ENTRE VALORES REALES Y LOS VALORES PREDECIDOS NORMALIZADOS -----------------------------------------
-# error_ds = true_out_demand - predicted_out_demand
-# error_ds = abs(error_ds)
-# plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
-# axes = plt.gca()
-# axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
-# plt.show()
-
 # PLOTEO EL ERROR COMETIDO ----------------------------------------------------------------------------------------------------------
-denormalized_true_out_demand = de_normalize_dataset(test_demand.copy(), demand_df.values)[:, 1]
-denormalized_predicted_out_demand = denormalized_predicted[:test_size, 1]
+denormalized_true_net_demand = de_normalize_dataset(test_demand.copy(), DIFF_DEMAND)
+denormalized_predicted_net_demand = denormalized_predicted[:test_size]
 
 # ERROR USANDO LOS VALORES NORMALIZADOS
-diff = true_out_demand - predicted_out_demand
+diff = true_net_demand - predicted_net_demand
 diff = abs(diff)
-plus_one = true_out_demand + 0.001
+plus_one = true_net_demand
 error_ds = diff / plus_one
 graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
-graph.set_ylabel('Error con valores normalizados')
+graph.set_title('Error con valores normalizados')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
 # ERROR USANDO LOS VALORES DES-NORMALIZADOS
-diff = denormalized_true_out_demand - denormalized_predicted_out_demand
+diff = denormalized_true_net_demand - denormalized_predicted_net_demand
 diff = abs(diff)
-plus_one = denormalized_true_out_demand + 1
+plus_one = denormalized_true_net_demand + 1
 error_ds = diff / plus_one
-# # error_ds = diff / denormalized_true_out_demand
+# # error_ds = diff / denormalized_true_net_demand
 graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b-o')])
-graph.set_ylabel('Error con valores des-normalizados')
+graph.set_title('Error con valores DES-normalizados')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
-# ERROR EN VALORES DES-NORMALIZADOS
-diff = denormalized_true_out_demand - denormalized_predicted_out_demand
-diff = abs(diff)
-error_ds = diff
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(error_ds, 'b')])
-axes = plt.gca()
-plt.show()
-
 # PLOTEO LOS VALORES PREDECIDOS Y LOS ORIGINALES DES-NORMALIZADOS (en miles de pesos) -----------------------------------------------------------------------------
-graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(denormalized_true_out_demand / 1000, 'b'), (denormalized_predicted_out_demand / 1000, 'r')])
+graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(denormalized_true_net_demand /1000 , 'b-o'),
+                                                                  (denormalized_predicted_net_demand /1000 , 'r-o')])
 graph.set_ylabel('Dinero en MILES')
 plt.show()
+
+
+
+
+
+plt.plot(DIFF_DEMAND)
+# graph = plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(DIFF_DEMAND,'b')])
+plt.show()
+

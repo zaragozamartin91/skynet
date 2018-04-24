@@ -119,7 +119,7 @@ vars_ds = append_prev_demand(vars_ds, demand_ds)
 # Descarto el primer dia dado que no cuenta con demanda previa o su demanda previa es un falso 0.0
 vars_ds = vars_ds[1:]
 demand_ds = demand_ds[1:]
-
+dates_ds = dates_ds[1:]
 
 # Asigno valores de 0 a 1 a todas las entradas
 normalize_dataset(vars_ds)
@@ -129,8 +129,8 @@ column_count = vars_ds.shape[1]  # Cantidad de columnas del dataset de entrada
 timesteps = 10  # cantidad de pasos memoria
 vars_ds = build_win_matrix(vars_ds, timesteps)
 # hago coincidir los dias y las demandas con la nueva matriz de ventana
-dates_ds = dates_ds[timesteps:]
 demand_ds = demand_ds[timesteps:]
+dates_ds = dates_ds[timesteps:]
 
 # reshape hacia (CANT_FILAS, CANT_ESTADOS = 1 , CANT_COLUMNAS)
 # este reshape se hace para trabajar con LSTM con timesteps == 1
@@ -235,10 +235,13 @@ last_date_idx = test_size - 1
 start_date = date.today().replace(true_dates[0, 2], true_dates[0, 1], true_dates[0, 0])  # obtengo la fecha de inicio
 end_date = date.today().replace(true_dates[last_date_idx, 2], true_dates[last_date_idx, 1], true_dates[last_date_idx, 0])  # obtengo la fecha de fin
 all_ticks = numpy.linspace(date2num(start_date), date2num(end_date), test_size)  # obtengo un arreglo con todos los valores numericos de fechas
-tick_spacing = 12
+
+tick_spacing = test_size if test_size <= 60 else 12
+date_format = "%m/%d" if test_size <= 60 else "%y/%m"
+
 # major_ticks = numpy.arange(date2num(start_date), date2num(end_date), tick_spacing)  # obtengo un arreglo con los valores de fecha que quiero mostrar
 major_ticks = numpy.linspace(date2num(start_date), date2num(end_date), tick_spacing)  # obtengo un arreglo con los valores de fecha que quiero mostrar
-major_tick_labels = [date.strftime("%Y-%m") for date in num2date(major_ticks)]
+major_tick_labels = [date.strftime(date_format) for date in num2date(major_ticks)]
 
 # PLOTEO DE LA DEMANDA DE SALIDA NORMALIZADA JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
 true_out_demand = demand_ds[test_lower_limit:test_upper_limit, 1]
