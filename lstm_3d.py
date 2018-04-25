@@ -63,10 +63,14 @@ def build_win_matrix(dataset, win_size=1):
     """ Crea una matriz tridimensional que contenga  """
     return win_matrix.build_win_matrix(dataset, win_size)
 
+def build_win_matrix_reversed(dataset, win_size=1):
+    """ Crea una matriz tridimensional que contenga  """
+    return win_matrix.build_win_matrix_reversed(dataset, win_size)
+
 
 numpy.random.seed(7)
 
-input_file = 'full_entrada_salida_pesos_100.csv'
+input_file = 'full_entrada_salida_pesos_506.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
@@ -94,8 +98,8 @@ normalize_dataset(vars_ds)
 normalize_dataset(demand_ds)
 
 column_count = vars_ds.shape[1]  # Cantidad de columnas del dataset de entrada
-timesteps = 15  # cantidad de pasos memoria
-vars_ds = build_win_matrix(vars_ds, timesteps)
+timesteps = 10  # cantidad de pasos memoria
+vars_ds = build_win_matrix_reversed(vars_ds, timesteps)
 # hago coincidir los dias y las demandas con la nueva matriz de ventana
 dates_ds = dates_ds[timesteps:]
 demand_ds = demand_ds[timesteps:]
@@ -132,7 +136,7 @@ model = Sequential()
 
 # keras.layers.LSTM(units, activation='tanh', recurrent_activation='hard_sigmoid', use_bias=True, kernel_initializer='glorot_uniform', recurrent_initializer='orthogonal', bias_initializer='zeros', unit_forget_bias=True, kernel_regularizer=None, recurrent_regularizer=None, bias_regularizer=None, activity_regularizer=None, kernel_constraint=None, recurrent_constraint=None, bias_constraint=None, dropout=0.0, recurrent_dropout=0.0, implementation=1, return_sequences=False, return_state=False, go_backwards=False, stateful=False, unroll=False)
 
-model.add(LSTM(20, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
+model.add(LSTM(30, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
 # model.add(LSTM(50, input_shape=(1,vars_ds.shape[2]) , stateful=True, batch_input_shape=(batch_size,1,vars_ds.shape[2])) )
 model.add(Dense(30, activation='relu'))
 model.add(Dense(2, activation='relu'))

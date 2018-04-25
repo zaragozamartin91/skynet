@@ -158,38 +158,52 @@ demand_ds = demand_ds[1:DATASET_UPPER_LIMIT]
 dates_ds = dates_ds[1:DATASET_UPPER_LIMIT]
 DIFF_DEMAND = DIFF_DEMAND[1:DATASET_UPPER_LIMIT]
 
+
 # Asigno valores de 0 a 1 a todas las entradas
 normalize_dataset(vars_ds)
 normalize_dataset(demand_ds)
 
 column_count = vars_ds.shape[1]  # Cantidad de columnas del dataset de entrada
 timesteps = 10  # cantidad de pasos memoria
+# construyo la matriz con memoria y hago coincidir los dias y las demandas con la nueva matriz de ventana
 vars_ds = build_win_matrix(vars_ds, timesteps)
-# hago coincidir los dias y las demandas con la nueva matriz de ventana
 demand_ds = demand_ds[timesteps:]
 dates_ds = dates_ds[timesteps:]
 
-test_size = 30
-train_size = len(vars_ds) - test_size
 
-train_lower_limit = 0
-train_upper_limit = train_size
-test_lower_limit = train_size
-test_upper_limit = train_size + test_size
+test_size = 22
+# El registro donde las predicciones de coe comienzan es el 481 (numero original)
+# - 1 (descartamos el primer registro dado que desestimamos la demanda del primer dia)
+# - timesteps - 1 (desestimamos los primeros 'timesteps' registros)
+# - cantidad de registros ruidosos eliminados
+COE_START_IDX = 482 - 1 - timesteps - 1 - del_count
+# El registro inmediato despues de las predicciones de COE esta a 22 regs de distancia que aquel del comienzo
+COE_END_IDX = COE_START_IDX + test_size
 
-# Creo el dataset de entrenamiento. EL mismo toma las filas
-# del 0 a train_size (no inclusive) y todas las columnas (rango ':')
-train_vars = vars_ds[train_lower_limit:train_upper_limit]
-train_demand = demand_ds[train_lower_limit:train_upper_limit]
 
-test_vars = vars_ds[test_lower_limit:test_upper_limit]
-test_demand = demand_ds[test_lower_limit:test_upper_limit]
-true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a graficar
+# separo los sets de datos en ANTES y DESPUES del registro inicial de COE
+vars_ds_before_coe = vars_ds[:COE_START_IDX]
+demand_ds_before_coe = demand_ds[:COE_START_IDX]
+dates_ds_before_coe = dates_ds[:COE_START_IDX]
+
+vars_ds_after_coe = vars_ds[COE_END_IDX + timesteps:]
+demand_ds_after_coe = demand_ds[COE_END_IDX + timesteps:]
+dates_ds_after_coe = dates_ds[COE_END_IDX + timesteps:]
+
+train_vars = numpy.vstack( (vars_ds_before_coe , vars_ds_after_coe) )
+train_demand = numpy.vstack( (demand_ds_before_coe , demand_ds_after_coe) )
+
+# tomo como valores de testeo a aquellos que se encuentran en el rango de prediccion de COE
+test_vars = vars_ds[COE_START_IDX:COE_END_IDX]
+test_demand = demand_ds[COE_START_IDX:COE_END_IDX]
+test_dates = dates_ds[COE_START_IDX:COE_END_IDX]
+
+
 
 model = Sequential()
 
 batch_size = 1
-epochs = 200
+epochs = 5
 model.add(LSTM(300, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
 # model.add(LSTM(50, input_shape=(1,vars_ds.shape[2]) , stateful=True, batch_input_shape=(batch_size,1,vars_ds.shape[2])) )
 model.add(Dense(100, activation='relu'))
@@ -225,6 +239,7 @@ predicted = numpy.array(predicted)
 # predicted = model.predict(test_vars, batch_size=batch_size)
 denormalized_predicted = de_normalize_dataset(predicted.copy(), DIFF_DEMAND)
 
+true_dates = test_dates
 last_date_idx = test_size - 1
 start_date = date.today().replace(true_dates[0, 2], true_dates[0, 1], true_dates[0, 0])  # obtengo la fecha de inicio
 end_date = date.today().replace(true_dates[last_date_idx, 2], true_dates[last_date_idx, 1], true_dates[last_date_idx, 0])  # obtengo la fecha de fin
