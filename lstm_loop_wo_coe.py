@@ -101,7 +101,7 @@ def build_win_matrix(dataset, win_size):
 
 numpy.random.seed(7)
 
-input_file = 'full_entrada_salida_pesos_506.csv'
+input_file = 'full_entrada_salida_pesos_151.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
@@ -123,7 +123,6 @@ vars_ds = vars_ds[1:]
 demand_ds = demand_ds[1:]
 dates_ds = dates_ds[1:]
 
-
 # Asigno valores de 0 a 1 a todas las entradas
 normalize_dataset(vars_ds)
 normalize_dataset(demand_ds)
@@ -140,7 +139,9 @@ test_size = 22
 # El registro donde las predicciones de coe comienzan es el 481 (numero original)
 # - 1 (descartamos el primer registro dado que desestimamos la demanda del primer dia)
 # - timesteps (desestimamos los primeros 'timesteps' registros)
-COE_START_IDX = 482 - 1 - timesteps
+COE_START_IDX = 477 - 1 - timesteps # P SUC 151
+# COE_START_IDX = 482 - 1 - timesteps   # P SUC 506
+
 # El registro inmediato despues de las predicciones de COE esta a 22 regs de distancia que aquel del comienzo
 COE_END_IDX = COE_START_IDX + test_size
 
@@ -179,7 +180,7 @@ model = Sequential()
 
 batch_size = 1
 epochs = 200
-model.add(LSTM(30, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
+model.add(LSTM(50, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
 # model.add(LSTM(50, input_shape=(1,vars_ds.shape[2]) , stateful=True, batch_input_shape=(batch_size,1,vars_ds.shape[2])) )
 model.add(Dense(30, activation='relu'))
 model.add(Dense(2, activation='relu'))
@@ -227,13 +228,14 @@ major_tick_labels = [date.strftime(date_format) for date in num2date(major_ticks
 
 # PLOTEO DE LA DEMANDA DE SALIDA NORMALIZADA JUNTO CON LA PORCION DE INCUMBENCIA DE LOS DATOS ORIGINALES -----------------------------------------
 true_out_demand = test_demand[:, 1]
-true_in_demand = test_demand[:, 0]
 predicted_out_demand = predicted[:, 1]
-predicted_in_demand = predicted[:, 0]
 plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_out_demand, 'b-o'), (predicted_out_demand, 'r-o')])
 plt.show()
 
-
+true_in_demand = test_demand[:, 0]
+predicted_in_demand = predicted[:, 0]
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_in_demand, 'b-o'), (predicted_in_demand, 'r-o')])
+plt.show()
 
 # PLOTEO EL ERROR COMETIDO ----------------------------------------------------------------------------------------------------------
 denormalized_true_out_demand = de_normalize_dataset(test_demand.copy(), demand_df.values)[:, 1]
