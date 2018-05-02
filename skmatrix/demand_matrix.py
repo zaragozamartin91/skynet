@@ -96,18 +96,21 @@ def build_missing_entry(curr_entry):
 
 def is_missing(curr_entry, next_entry):
     """ Determina si falta una entrada entre curr_entry y next_entry """
-    curr_dow = get_dow(curr_entry)
-    next_dow = get_dow(next_entry)
+    # curr_dow = get_dow(curr_entry)
+    # next_dow = get_dow(next_entry)
 
-    curr_dom = get_dom(curr_entry)
-    next_dom = get_dom(next_entry)
+    # curr_dom = get_dom(curr_entry)
+    # next_dom = get_dom(next_entry)
 
-    # Escenario 1: hay diferencia de dias de la semana
-    if(abs(next_dow - curr_dow) > 1): return True
-    # Escenario 2: hay 6 o 7 dias no laborables consecutivos y ademas no es cambio de mes
-    if(abs(next_dom - curr_dom) > 1 and abs(next_dom - curr_dom) < 20): return True
-    
-    return False
+    # # Escenario 1: hay diferencia de dias de la semana
+    # if(abs(next_dow - curr_dow) > 1): return True
+    # # Escenario 2: hay 6 o 7 dias no laborables consecutivos y ademas no es cambio de mes
+    # if(abs(next_dom - curr_dom) > 1 and abs(next_dom - curr_dom) < 20): return True
+
+    curr_date = date_parser.parse_date(get_date(curr_entry))
+    next_date = date_parser.parse_date(get_date(next_entry))
+
+    return date_parser.two_day_gap(curr_date['full_date'], next_date['full_date'])
 
 
 def is_friday_to_monday(curr_dow, next_dow):
@@ -251,9 +254,11 @@ def get_dow(entry):
     """ Obtiene el campo de dia de la semana de una entrada del dataset """
     return entry[DOW_IDX]
 
+
 def get_dom(entry):
     """ Obtiene el campo de dia del mes de una entrada del dataset """
     return entry[DOM_IDX]
+
 
 def get_date(entry):
     """ Obtiene el campo fecha de un entry del dataset """

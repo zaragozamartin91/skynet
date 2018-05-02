@@ -74,12 +74,6 @@ demand_ds = demand_df.values.astype('float64')
 
 vars_ds = append_prev_demand(vars_ds, demand_ds)
 
-# PRUEBA REMOVIENDO LOS REGISTROS CON DEMANDA 0
-# t = demand_ds[:,0]
-# b = t > 1.0
-# vars_ds = vars_ds[b]
-# demand_ds = demand_ds[b]
-
 # Asigno valores de 0 a 1 a todas las entradas
 normalize_dataset(vars_ds)
 normalize_dataset(demand_ds)
