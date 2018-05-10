@@ -19,6 +19,8 @@ input_file = 'full_entrada_salida_pesos_151.csv'
 vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
 demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
+DOW_COL, DOM_COL, MONTH_COL, PREVH_COL, POSTH_COL = range(5)
+
 DIFF_DEMAND = demand_df.values[:, 0] - demand_df.values[:, 1]
 DIFF_DEMAND.resize((len(DIFF_DEMAND), 1))
 
@@ -36,26 +38,53 @@ demand_ds = in_demand - out_demand
 demand_ds.resize((len(demand_ds), 1))
 
 # obtengo los valores de demanda categorizados
-CAT_COUNT = 20 
+CAT_COUNT = 30
 categorized_demand, demand_bags = categorizer.categorize_real(demand_ds, cat_count=CAT_COUNT)
 one_hot_demand = categorizer.one_hot(categorized_demand)
 final_demand = one_hot_demand.copy()
-# adjunto la demanda del dia anterior al arreglo de variables
-vars_w_previous_demand = numpy.hstack((vars_ds[1:], final_demand[:-1]))
 
 # convierto a los dias de la semana en un arreglo one_hot
-vars_w_categorized_dow = categorizer.categorize_int(vars_ds, 0)
-one_hot_dow = categorizer.one_hot(vars_w_categorized_dow)
+vars_w_categorized_dow = categorizer.categorize_int(vars_ds, cat_col=DOW_COL)
+one_hot_dow = categorizer.one_hot(vars_w_categorized_dow, cat_col=DOW_COL)
 
-# defino las variables categorizadas
-final_vars = numpy.hstack((one_hot_dow[1:], vars_w_previous_demand[:, 1:]))
-final_demand = final_demand[1:]  # alineo la demanda final con las variables de entrada
+# convierto los dias del mes en un arreglo one_hot
+vars_w_categorized_dom = categorizer.categorize_int(vars_ds, cat_col=DOM_COL)
+one_hot_dom = categorizer.one_hot(vars_w_categorized_dom, cat_col=DOM_COL)
+
+# convierto los meses en un arreglo one_hot
+vars_w_categorized_month = categorizer.categorize_int(vars_ds, cat_col=MONTH_COL)
+one_hot_month = categorizer.one_hot(vars_w_categorized_month, cat_col=MONTH_COL)
+
+# convierto los dias previos no laborables en arreglos one_hot
+vars_w_categorized_prevh = categorizer.categorize_int(vars_ds, cat_col=PREVH_COL)
+one_hot_prevh = categorizer.one_hot(vars_w_categorized_prevh, cat_col=PREVH_COL)
+
+# convierto los dias posteriores no laborables en arreglos one_hot
+vars_w_categorized_posth = categorizer.categorize_int(vars_ds, cat_col=POSTH_COL)
+one_hot_posth = categorizer.one_hot(vars_w_categorized_posth, cat_col=POSTH_COL)
+
+# defino el tensor de variables o entrada como la union de los tensores one_hot calculados antes.# armo el tensor final de entrada
+# ademas le adjunto entradas de dias anteriores
+final_vars = numpy.hstack((one_hot_dow, one_hot_dom, one_hot_month, one_hot_prevh, one_hot_posth))
+__final_vars = final_vars
+__final_demand = final_demand
+__final_demand = __final_demand[:-1]
+__final_vars = numpy.hstack( (__final_vars[1:] , __final_demand ) )
+__final_demand = __final_demand[:-1]
+__final_vars = numpy.hstack( (__final_vars[1:] , __final_demand ) )
+final_vars = __final_vars
+final_demand = __final_demand
+
+# defino el tensor de variables o entrada como la union de los tensores one_hot calculados antes.
+# ademas le adjunto la demanda del dia anterior (por eso los one_hot comienzan en la fila 1 y el final_demand termina antes de la ultima fila)
+# final_vars = numpy.hstack((one_hot_dow[1:], one_hot_dom[1:], one_hot_month[1:], one_hot_prevh[1:], one_hot_posth[1:], final_demand[:-1]))
+# final_demand = final_demand[1:]  # alineo la demanda final con las variables de entrada
 
 # CONSTRUCCION DE LA RED -----------------------------------------------------------------------------------------------------------
 
 # Parameters
 learning_rate = 0.001
-training_epochs = 400
+training_epochs = 500
 
 # defino la cantidad de registros de entrenamiento y de prueba a partir del batch_size
 # batch_size = 5
@@ -76,8 +105,10 @@ n_input = train_in_ds.shape[1]  # defino el tamano de la capa de entrada
 n_classes = train_out_ds.shape[1]  # defino el tamano de la capa de salida / numero de clases a clasificar
 
 # el tamano de las capas ocultas es igual al tamano de la capa de salida
-n_hidden_1 = int((train_in_ds.shape[1] + train_out_ds.shape[1]) / 2)
-n_hidden_2 = int((train_in_ds.shape[1] + train_out_ds.shape[1]) / 2)
+# n_hidden_1 = int((train_in_ds.shape[1] + train_out_ds.shape[1]) / 2)
+# n_hidden_2 = int((train_in_ds.shape[1] + train_out_ds.shape[1]) / 2)
+n_hidden_1 = int(train_in_ds.shape[1] * 0.8)
+n_hidden_2 = int(train_in_ds.shape[1] * 0.8)
 
 WEIGHT_SEED = 11
 
@@ -123,10 +154,10 @@ def multilayer_perceptron(x):
     # Hidden fully connected layer with 256 neurons
     # Cada capa resuelve: x * w + b
     layer_1 = tf.matmul(x, weights['hidden_1']) + biases['bias_1']
-    #layer_1 = tf.nn.relu(layer_1)
+    layer_1 = tf.nn.sigmoid(layer_1)
     # Hidden fully connected layer with 256 neurons
     layer_2 = tf.matmul(layer_1, weights['hidden_2']) + biases['bias_2']
-    #layer_2 = tf.nn.relu(layer_2)
+    layer_2 = tf.nn.sigmoid(layer_2)
     # Output fully connected layer with a neuron for each class
     out_layer = tf.matmul(layer_2, weights['out']) + biases['out']
     return out_layer
