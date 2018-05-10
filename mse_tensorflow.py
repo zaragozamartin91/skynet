@@ -35,27 +35,27 @@ out_demand = demand_ds[:, 1]
 demand_ds = in_demand - out_demand
 demand_ds.resize((len(demand_ds), 1))
 
-# convierto a la demanda en una categoria one_hot
-categorized_demand, demand_bags = categorizer.categorize_real(demand_ds, 10)
+# obtengo los valores de demanda categorizados
+CAT_COUNT = 20 
+categorized_demand, demand_bags = categorizer.categorize_real(demand_ds, cat_count=CAT_COUNT)
 one_hot_demand = categorizer.one_hot(categorized_demand)
+final_demand = one_hot_demand.copy()
+# adjunto la demanda del dia anterior al arreglo de variables
+vars_w_previous_demand = numpy.hstack((vars_ds[1:], final_demand[:-1]))
 
 # convierto a los dias de la semana en un arreglo one_hot
 vars_w_categorized_dow = categorizer.categorize_int(vars_ds, 0)
 one_hot_dow = categorizer.one_hot(vars_w_categorized_dow)
-final_demand = one_hot_dow.copy()
-
-# adjunto la demanda del dia anterior al arreglo de variables
-vars_w_previous_demand = numpy.hstack( ( vars_ds[1:] , final_demand[:-1] ) )
 
 # defino las variables categorizadas
 final_vars = numpy.hstack((one_hot_dow[1:], vars_w_previous_demand[:, 1:]))
-final_demand = final_demand[1:] # alineo la demanda final con las variables de entrada
+final_demand = final_demand[1:]  # alineo la demanda final con las variables de entrada
 
 # CONSTRUCCION DE LA RED -----------------------------------------------------------------------------------------------------------
 
 # Parameters
 learning_rate = 0.001
-training_epochs = 300
+training_epochs = 400
 
 # defino la cantidad de registros de entrenamiento y de prueba a partir del batch_size
 # batch_size = 5
@@ -65,7 +65,6 @@ train_size = len(final_vars) - test_size
 batch_size = train_size
 
 display_step = 1
-
 
 train_in_ds = final_vars[0:train_size]  # dataset de entrnamiento de entrada
 train_out_ds = final_demand[0:train_size]  # dataset de entrenamiento de salida o clases
@@ -80,15 +79,21 @@ n_classes = train_out_ds.shape[1]  # defino el tamano de la capa de salida / num
 n_hidden_1 = int((train_in_ds.shape[1] + train_out_ds.shape[1]) / 2)
 n_hidden_2 = int((train_in_ds.shape[1] + train_out_ds.shape[1]) / 2)
 
+WEIGHT_SEED = 11
+
+
 def build_random_weight_tensor(in_size, out_size):
     """ Construye un tensor de in_size * out_size elementos con valores aleatorios siguiendo la distribucion normal.
     Cada valor representa el peso de la entrada 'i' hacia la neurona 'j' (siendo i una fila y j una columna) """
-    return tf.random_normal(shape=[in_size, out_size])
+    return tf.random_normal(shape=[in_size, out_size], seed=WEIGHT_SEED)
+
+
+BIAS_SEED = 7
 
 
 def build_random_bias_tensor(out_size):
     """ Crea un tensor de umbrales de activacion para una capa de la red neuronal """
-    return tf.random_normal(shape=[out_size])
+    return tf.random_normal(shape=[out_size], seed=BIAS_SEED)
 
 
 # NOTAR QUE LOS PESOS Y BIASES SON VARIABLES
@@ -118,13 +123,12 @@ def multilayer_perceptron(x):
     # Hidden fully connected layer with 256 neurons
     # Cada capa resuelve: x * w + b
     layer_1 = tf.matmul(x, weights['hidden_1']) + biases['bias_1']
-    
+    #layer_1 = tf.nn.relu(layer_1)
     # Hidden fully connected layer with 256 neurons
     layer_2 = tf.matmul(layer_1, weights['hidden_2']) + biases['bias_2']
-    
+    #layer_2 = tf.nn.relu(layer_2)
     # Output fully connected layer with a neuron for each class
     out_layer = tf.matmul(layer_2, weights['out']) + biases['out']
-    
     return out_layer
 
 
@@ -146,7 +150,6 @@ train_op = optimizer.minimize(loss_op)
 # Esta funcion define un step u operacion de tensorflow que inicializara variables (los tf.Variable)
 init_op = tf.global_variables_initializer()
 
-
 sess = tf.Session()
 
 sess.run(init_op)
@@ -165,10 +168,18 @@ print("Optimization Finished!")
 
 # Test model
 pred = tf.nn.softmax(logits)  # Aplico funcion de activacion SOFTMAX a la capa final
-correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(Y, 1)) # determino punto a punto si la prediccion es correcta
+correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(Y, 1))  # determino punto a punto si la prediccion es correcta
 
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-print("Accuracy:", accuracy.eval({X: test_in_ds, Y: test_out_ds} , session=sess))
+print("Accuracy:", accuracy.eval({X: test_in_ds, Y: test_out_ds}, session=sess))
 
+prediction = sess.run(tf.argmax(pred, 1), feed_dict={X: test_in_ds})
+true_values = sess.run(tf.argmax(Y, 1), feed_dict={Y: test_out_ds})
+
+plt.plot(prediction)
+plt.plot(true_values)
+axes = plt.gca()
+axes.set_ylim([0, CAT_COUNT])  # seteo limite en el eje y entre 0 y 1
+plt.show()
 
 sess.close()
