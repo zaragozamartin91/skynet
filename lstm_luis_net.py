@@ -97,12 +97,12 @@ input_file = 'full_entrada_salida_pesos_151.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4       5        6         7
-# index,dow,dom,month,year,net_demand,prev_holy,pos_holy
+# index,dow,dom,month,year,net_demand,prev_holi,pos_holi
 vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 6, 7])
 demand_df = pandas.read_csv(input_file, usecols=[5])
 
 #  0     1   2    3     4       5        6         7
-# index,dow,dom,month,year,net_demand,prev_holy,pos_holy
+# index,dow,dom,month,year,net_demand,prev_holi,pos_holi
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')

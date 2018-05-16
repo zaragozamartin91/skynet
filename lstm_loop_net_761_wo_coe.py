@@ -116,7 +116,7 @@ input_file = 'full_entrada_salida_pesos_761.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
 demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
@@ -124,7 +124,7 @@ DIFF_DEMAND = demand_df.values[:, 0] - demand_df.values[:, 1]
 DIFF_DEMAND.resize((len(DIFF_DEMAND), 1))
 
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')

@@ -25,7 +25,7 @@ balance_col_count = balance_ds.shape[1]
 DATE_IDX, BALANCE_IDX = range(balance_col_count)
 
 #   0    1   2    3     4        5       6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 data_df = pandas.read_csv('full_entrada_salida_pesos_100.csv', usecols=[2, 3, 4, 6])
 data_ds = data_df.values
 

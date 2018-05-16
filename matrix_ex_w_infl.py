@@ -24,7 +24,7 @@ print(full_ds)
 # YEAR_IDX
 # IN_DEMAND_IDX
 # OUT_DEMAND_IDX
-cols = ['dow', 'dom', 'month', 'year', 'in_demand', 'out_demand', 'prev_holy', 'pos_holy', 'minfl']
+cols = ['dow', 'dom', 'month', 'year', 'in_demand', 'out_demand', 'prev_holi', 'pos_holi', 'minfl']
 full_df = pandas.DataFrame(data=full_ds[:, 1:], columns=cols)
 full_df.to_csv('full_data.csv')
 

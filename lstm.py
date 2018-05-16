@@ -58,12 +58,12 @@ numpy.random.seed(7)
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 vars_df = pandas.read_csv('full_data.csv', usecols=[1, 2, 3, 7, 8])
 demand_df = pandas.read_csv('full_data.csv', usecols=[5, 6])
 
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 dates_ds = pandas.read_csv('full_data.csv', usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')

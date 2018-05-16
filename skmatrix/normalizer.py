@@ -31,3 +31,26 @@ def de_normalize_dataset(normalized_ds, original_ds):
         b = a + min_value
         normalized_ds[:, col] = b
     return normalized_ds
+
+
+def normalize_dataset_w_normaldist(dataset):
+    """ Normaliza un dataset """
+    col_count = dataset.shape[1]
+    for col in range(col_count):
+        sub_ds = dataset[:, col]
+        meanv = sub_ds.mean()
+        stdv = sub_ds.std()
+        n_ds = (sub_ds - meanv) / stdv
+        dataset[:, col] = n_ds
+    return dataset
+
+def de_normalize_dataset_w_normaldist(dataset, original_ds):
+    """ Normaliza un dataset """
+    col_count = dataset.shape[1]
+    for col in range(col_count):
+        sub_ds = original_ds[:, col]
+        meanv = sub_ds.mean()
+        stdv = sub_ds.std()
+        n_ds = dataset * stdv + meanv
+        dataset[:, col] = n_ds
+    return dataset

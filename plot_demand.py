@@ -10,7 +10,7 @@ if(len(sys.argv) < 2):
 input_file = sys.argv[1]
 
 #  0    1   2    3     4      5         6          7        8
-#INDEX,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy
+#INDEX,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi
 dataframe = pandas.read_csv(input_file, delimiter=',' ,usecols=[5,6], engine='python')
 dataset = dataframe.values.astype('float32')
 

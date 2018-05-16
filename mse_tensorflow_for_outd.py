@@ -22,9 +22,6 @@ demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 RAW_IN_COL_COUNT = 5  # CANTIDAD DE COLUMNAS DE ENTRADA SIN CONTAR LAS PREDICCIONES DE DIAS ANTERIORES
 DOW_COL, DOM_COL, MONTH_COL, PREVH_COL, POSTH_COL = range(RAW_IN_COL_COUNT)
 
-DIFF_DEMAND = demand_df.values[:, 0] - demand_df.values[:, 1]
-DIFF_DEMAND.resize((len(DIFF_DEMAND), 1))
-
 #  0     1   2    3     4         5      6         7          8      9
 # index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
@@ -35,11 +32,12 @@ demand_ds = demand_df.values.astype('float64')
 # reasigno a demand_ds como la demanda neta (entrada - salida)
 in_demand = demand_ds[:, 0]
 out_demand = demand_ds[:, 1]
-demand_ds = in_demand - out_demand
+demand_ds = out_demand
+# demand_ds = in_demand - out_demand
 demand_ds.resize((len(demand_ds), 1))
 
 # obtengo los valores de demanda categorizados
-CAT_COUNT = 30
+CAT_COUNT = 20
 categorized_demand, demand_bags = categorizer.categorize_real_w_equal_frames(demand_ds, cat_count=CAT_COUNT)
 one_hot_demand = categorizer.one_hot(categorized_demand)
 final_demand = one_hot_demand.copy()
@@ -75,17 +73,11 @@ __final_demand = final_demand
 for _ in range(PREVIOUS_ENTRIES_COUNT):
     __final_demand = __final_demand[:-1]
     __final_vars = numpy.hstack((__final_vars[1:], __final_demand))
-# __final_demand = __final_demand[:-1]
-# __final_vars = numpy.hstack((__final_vars[1:], __final_demand))
 
 final_vars = __final_vars
 # alineo la demanda con los valores de entrada
 final_demand = final_demand[PREVIOUS_ENTRIES_COUNT:]
 
-# defino el tensor de variables o entrada como la union de los tensores one_hot calculados antes.
-# ademas le adjunto la demanda del dia anterior (por eso los one_hot comienzan en la fila 1 y el final_demand termina antes de la ultima fila)
-# final_vars = numpy.hstack((one_hot_dow[1:], one_hot_dom[1:], one_hot_month[1:], one_hot_prevh[1:], one_hot_posth[1:], final_demand[:-1]))
-# final_demand = final_demand[1:]  # alineo la demanda final con las variables de entrada
 
 # CONSTRUCCION DE LA RED -----------------------------------------------------------------------------------------------------------
 

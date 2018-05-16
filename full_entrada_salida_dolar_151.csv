@@ -1,4 +1,4 @@
-,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy
+,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi
 0,3,1,7,2014,523600.0,523600.0,0,0
 1,4,2,7,2014,1017634.0,1017634.0,0,1
 2,5,3,7,2014,0.0,0.0,0,0

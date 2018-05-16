@@ -15,38 +15,15 @@ from matplotlib.dates import num2date
 
 from fractions import gcd
 
+from skmatrix import normalizer
+
 
 def normalize_dataset(dataset):
-    """ Normaliza un dataset """
-    col_count = dataset.shape[1]
-    for col in range(col_count):
-        sub_ds = dataset[:, col]
-        max_value = float(max(sub_ds))
-        min_value = float(min(sub_ds))
-        diff = max_value - min_value
-        n_ds = sub_ds - min_value
-        n_ds = n_ds / diff
-        dataset[:, col] = n_ds
-    return dataset
+    return normalizer.normalize_dataset_w_normaldist(dataset)
 
 
 def de_normalize_dataset(normalized_ds, original_ds):
-    """ 
-    Des-normaliza un dataset a partir del dataset original (completo) 
-    :param normalized_ds : Dataset normalizado a des-normalizar
-    :param original_ds : Dataset ORIGINAL (no particionado) del cual obtener los valores originales
-    :return : Dataset des-normalizado
-    """
-    col_count = original_ds.shape[1]
-    for col in range(col_count):
-        original_sub_ds = original_ds[:, col]
-        min_value = min(original_sub_ds)
-        max_value = max(original_sub_ds)
-        diff = max_value - min_value
-        a = normalized_ds[:, col] * diff
-        b = a + min_value
-        normalized_ds[:, col] = b
-    return normalized_ds
+    return normalizer.de_normalize_dataset_w_normaldist(normalized_ds , original_ds)
 
 
 def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots):
@@ -100,7 +77,7 @@ input_file = 'full_entrada_salida_pesos_506.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
 demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
@@ -108,7 +85,7 @@ DIFF_DEMAND = demand_df.values[:,0] - demand_df.values[:,1]
 DIFF_DEMAND.resize( (len(DIFF_DEMAND) , 1) )
 
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')
@@ -181,11 +158,11 @@ model = Sequential()
 # batch_size = 5
 # batch_size = gcd(train_size , test_size)
 batch_size = 1
-epochs = 200
+epochs = 3
 model.add(LSTM(30, stateful=True, batch_input_shape=(batch_size, timesteps + 1, column_count)))
 # model.add(LSTM(50, input_shape=(1,vars_ds.shape[2]) , stateful=True, batch_input_shape=(batch_size,1,vars_ds.shape[2])) )
-model.add(Dense(30, activation='relu'))
-model.add(Dense(1, activation='relu'))
+model.add(Dense(30))
+model.add(Dense(1))
 opt = optimizers.adam(lr=0.001)
 model.compile(loss='binary_crossentropy', optimizer=opt)
 # model.compile(loss='mean_squared_error', optimizer=opt)

@@ -74,18 +74,18 @@ input_file = 'full_entrada_salida_pesos_506.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
 demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
 
-DOW_IDX, DOM_IDX, MONTH_IDX, PREVHOLY_IDX, POSTHOLY_IDX = range(vars_ds.shape[1])
+DOW_IDX, DOM_IDX, MONTH_IDX, PREVHOLI_IDX, POSTHOLI_IDX = range(vars_ds.shape[1])
 
 # Agrego los valores de la demanda de entrada y salida previas
 vars_ds = append_prev_demand(vars_ds, demand_ds)
