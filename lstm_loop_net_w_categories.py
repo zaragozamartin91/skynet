@@ -38,6 +38,7 @@ input_file = 'full_entrada_salida_pesos_151.csv'
 #  0     1   2    3     4         5      6         7
 # index,dow,dom,month,year,in_demand,out_demand,holi_flag
 demand_df = pandas.read_csv(input_file, usecols=[5, 6])
+vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7])
 
 DIFF_DEMAND = demand_df.values[:, 0] - demand_df.values[:, 1]
 DIFF_DEMAND.resize((len(DIFF_DEMAND), 1))
@@ -47,6 +48,7 @@ DIFF_DEMAND.resize((len(DIFF_DEMAND), 1))
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 demand_ds = demand_df.values.astype('float64')
+vars_ds = vars_df.values.astype('float64')
 
 in_demand = demand_ds[:, 0]
 out_demand = demand_ds[:, 1]
@@ -66,7 +68,7 @@ demand_ds = categorized_demand.copy()
 ds_size = len(demand_ds)  # tamano del dataset
 
 # prepare the dataset of input to output pairs encoded as integers
-seq_length = 100
+seq_length = 10
 dataX = []
 dataY = []
 for i in range(0, ds_size - seq_length, 1):
@@ -102,17 +104,18 @@ true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a
 # define the LSTM model
 model = Sequential()
 model.add(LSTM(256, input_shape=(train_x.shape[1], train_x.shape[2])))
-model.add(Dropout(0.2))
+# model.add(Dropout(0.2))
+model.add(Dense(128, activation='relu'))
 model.add(Dense(train_y.shape[1], activation='softmax'))
-model.compile(loss='categorical_crossentropy', optimizer='adam')
+opt = optimizers.adam(lr=0.001)
+model.compile(loss='categorical_crossentropy', optimizer=opt)
 # define the checkpoint
 # filepath = "weights-improvement-{epoch:02d}-{loss:.4f}.hdf5"
 # checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
 # callbacks_list = [checkpoint]
 # fit the model
 # model.fit(train_x, train_y, epochs=20, batch_size=batch_size, callbacks=callbacks_list , shuffle=False)
-model.fit(train_x, train_y, epochs=10, batch_size=batch_size, shuffle=False)
-
+model.fit(train_x, train_y, epochs=50, batch_size=batch_size, shuffle=False)
 
 predicted = []
 
@@ -121,37 +124,14 @@ pattern = dataX[test_lower_limit]
 
 for i in range(test_size):
     x = numpy.reshape(pattern, (1, len(pattern), 1))
-    x = normalize(x , CAT_COUNT - 1)
+    x = normalize(x, CAT_COUNT - 1)
     prediction = model.predict(x, verbose=0)
     predicted_category = numpy.argmax(prediction)
     predicted.append(predicted_category)
-    pattern = numpy.append(pattern , predicted_category)
+    pattern = numpy.append(pattern, predicted_category)
     # pattern.append(predicted_category)
     pattern = pattern[1:len(pattern)]
 
-print("\nDone.")
-
-idx = 0
-predicted = []
-
-# idx = 0
-test_var = test_vars[idx:idx + 1]
-predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((1,))
-predicted.append(predicted_entry)
-idx += 1
-
-for idx in range(1, test_size):
-    test_var = test_vars[idx:idx + 1]  # obtengo la entrada sobre la cual voy a hacer la prediccion
-    start_ts = 0 if (timesteps - idx + 1 <= 0) else (timesteps - idx + 1)
-    end_ts = timesteps + 1 + 1  # si recuerdo 10 dias , entonces tengo 11 elementos (10 pasados + 1 actual)
-    start_pred = 0 if (idx - timesteps - 1 <= 0) else idx - timesteps - 1
-    end_pred = idx
-    test_var[0, start_ts:end_ts, 5:] = predicted[start_pred:end_pred]
-    predicted_entry = model.predict(test_var, batch_size=batch_size).reshape((1,))
-    predicted.append(predicted_entry)
-    print('start_ts: %d , end_ts: %d , start_pred: %d , end_pred: %d' % (start_ts, end_ts, start_pred, end_pred))
-
-predicted = numpy.array(predicted)
 
 last_date_idx = test_size - 1
 start_date = date.today().replace(true_dates[0, 2], true_dates[0, 1], true_dates[0, 0])  # obtengo la fecha de inicio
