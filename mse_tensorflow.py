@@ -15,18 +15,17 @@ input_file = 'full_entrada_salida_pesos_151.csv'
 
 # COLUMNAS:
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
 vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7, 8])
 demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
-RAW_IN_COL_COUNT = 5  # CANTIDAD DE COLUMNAS DE ENTRADA SIN CONTAR LAS PREDICCIONES DE DIAS ANTERIORES
-DOW_COL, DOM_COL, MONTH_COL, PREVH_COL, POSTH_COL = range(RAW_IN_COL_COUNT)
+DOW_COL, DOM_COL, MONTH_COL, PREVH_COL, POSTH_COL = range(5)
 
 DIFF_DEMAND = demand_df.values[:, 0] - demand_df.values[:, 1]
 DIFF_DEMAND.resize((len(DIFF_DEMAND), 1))
 
 #  0     1   2    3     4         5      6         7          8      9
-# index,dow,dom,month,year,in_demand,out_demand,prev_holi,pos_holi,minfl
+# index,dow,dom,month,year,in_demand,out_demand,prev_holy,pos_holy,minfl
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 vars_ds = vars_df.values.astype('float64')
@@ -40,7 +39,7 @@ demand_ds.resize((len(demand_ds), 1))
 
 # obtengo los valores de demanda categorizados
 CAT_COUNT = 30
-categorized_demand, demand_bags = categorizer.categorize_real_w_equal_frames(demand_ds, cat_count=CAT_COUNT)
+categorized_demand, demand_bags = categorizer.categorize_real(demand_ds, cat_count=CAT_COUNT)
 one_hot_demand = categorizer.one_hot(categorized_demand)
 final_demand = one_hot_demand.copy()
 
@@ -64,23 +63,17 @@ one_hot_prevh = categorizer.one_hot(vars_w_categorized_prevh, cat_col=PREVH_COL)
 vars_w_categorized_posth = categorizer.categorize_int(vars_ds, cat_col=POSTH_COL)
 one_hot_posth = categorizer.one_hot(vars_w_categorized_posth, cat_col=POSTH_COL)
 
-
-final_vars = numpy.hstack((one_hot_dow, one_hot_dom, one_hot_month, one_hot_prevh, one_hot_posth))
-PREVIOUS_ENTRIES_COUNT = 2
 # defino el tensor de variables o entrada como la union de los tensores one_hot calculados antes.# armo el tensor final de entrada
 # ademas le adjunto entradas de dias anteriores
+final_vars = numpy.hstack((one_hot_dow, one_hot_dom, one_hot_month, one_hot_prevh, one_hot_posth))
 __final_vars = final_vars
 __final_demand = final_demand
-
-for _ in range(PREVIOUS_ENTRIES_COUNT):
-    __final_demand = __final_demand[:-1]
-    __final_vars = numpy.hstack((__final_vars[1:], __final_demand))
-# __final_demand = __final_demand[:-1]
-# __final_vars = numpy.hstack((__final_vars[1:], __final_demand))
-
+__final_demand = __final_demand[:-1]
+__final_vars = numpy.hstack( (__final_vars[1:] , __final_demand ) )
+__final_demand = __final_demand[:-1]
+__final_vars = numpy.hstack( (__final_vars[1:] , __final_demand ) )
 final_vars = __final_vars
-# alineo la demanda con los valores de entrada
-final_demand = final_demand[PREVIOUS_ENTRIES_COUNT:]
+final_demand = __final_demand
 
 # defino el tensor de variables o entrada como la union de los tensores one_hot calculados antes.
 # ademas le adjunto la demanda del dia anterior (por eso los one_hot comienzan en la fila 1 y el final_demand termina antes de la ultima fila)
@@ -116,7 +109,6 @@ n_classes = train_out_ds.shape[1]  # defino el tamano de la capa de salida / num
 # n_hidden_2 = int((train_in_ds.shape[1] + train_out_ds.shape[1]) / 2)
 n_hidden_1 = int(train_in_ds.shape[1] * 0.8)
 n_hidden_2 = int(train_in_ds.shape[1] * 0.8)
-n_hidden_3 = int(train_in_ds.shape[1] * 0.8)
 
 WEIGHT_SEED = 11
 
@@ -146,33 +138,28 @@ def build_random_bias_tensor(out_size):
 weights = {
     'hidden_1': tf.Variable(build_random_weight_tensor(n_input, n_hidden_1)),
     'hidden_2': tf.Variable(build_random_weight_tensor(n_hidden_1, n_hidden_2)),
-    'hidden_3': tf.Variable(build_random_weight_tensor(n_hidden_2, n_hidden_3)),
-    'out': tf.Variable(build_random_weight_tensor(n_hidden_3, n_classes))
+    'out': tf.Variable(build_random_weight_tensor(n_hidden_2, n_classes))
 }
 
 # defino los umbrales de activacion
 biases = {
     'bias_1': tf.Variable(build_random_bias_tensor(n_hidden_1)),
     'bias_2': tf.Variable(build_random_bias_tensor(n_hidden_2)),
-    'bias_3': tf.Variable(build_random_bias_tensor(n_hidden_3)),
     'out': tf.Variable(build_random_bias_tensor(n_classes))
 }
 
 
 # Create model
 def multilayer_perceptron(x):
+    # Hidden fully connected layer with 256 neurons
     # Cada capa resuelve: x * w + b
-    # Conecto capa de entrada con capa oculta 1
     layer_1 = tf.matmul(x, weights['hidden_1']) + biases['bias_1']
     layer_1 = tf.nn.sigmoid(layer_1)
-    # Conecto capa oculta 1 con capa oculta 2
+    # Hidden fully connected layer with 256 neurons
     layer_2 = tf.matmul(layer_1, weights['hidden_2']) + biases['bias_2']
     layer_2 = tf.nn.sigmoid(layer_2)
-    # Conecto capa oculta 2 con capa oculta 3
-    layer_3 = tf.matmul(layer_2, weights['hidden_3']) + biases['bias_3']
-    layer_3 = tf.nn.sigmoid(layer_3)
-    # Conecto capa oculta 3 con capa de salida
-    out_layer = tf.matmul(layer_3, weights['out']) + biases['out']
+    # Output fully connected layer with a neuron for each class
+    out_layer = tf.matmul(layer_2, weights['out']) + biases['out']
     return out_layer
 
 
@@ -217,19 +204,7 @@ correct_prediction = tf.equal(tf.argmax(pred, 1), tf.argmax(Y, 1))  # determino 
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
 print("Accuracy:", accuracy.eval({X: test_in_ds, Y: test_out_ds}, session=sess))
 
-
-def translate_prediction(pred_value, cat_count=CAT_COUNT):
-    a = numpy.zeros(CAT_COUNT)
-    a[pred_value] = 1
-    return a
-
-
-test_in_0 = test_in_ds[0]
-prediction_0 = sess.run(tf.argmax(pred, 1), feed_dict={X: [test_in_0]})
-one_hot_prediction_0 = translate_prediction(prediction_0)
-
-test_in_1 = test_in_ds[1]
-test_in_1[RAW_IN_COL_COUNT:RAW_IN_COL_COUNT + CAT_COUNT] = one_hot_prediction_0
+# TODO : REALIZAR PREDICCION ELEMENTO A ELEMENTO 
 
 prediction = sess.run(tf.argmax(pred, 1), feed_dict={X: test_in_ds})
 true_values = sess.run(tf.argmax(Y, 1), feed_dict={Y: test_out_ds})
