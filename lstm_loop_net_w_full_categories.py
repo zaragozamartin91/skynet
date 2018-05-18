@@ -75,14 +75,14 @@ dataset = b.copy()
 
 # obtengo los valores de demanda categorizados
 CAT_COUNT = 40
-categorized_dataset, demand_bags = categorizer.categorize_real_w_equal_frames(dataset, cat_count=CAT_COUNT , cat_col=DEMAND_COL_IDX)
+categorized_dataset, demand_bags = categorizer.categorize_real_w_equal_frames(dataset, cat_count=CAT_COUNT, cat_col=DEMAND_COL_IDX)
 dataset = categorized_dataset.copy()
 
 ds_size = len(dataset)  # tamano del dataset
-norm_dataset = normalize_dataset(dataset) # dataset normalizado
+norm_dataset = normalize_dataset(dataset)  # dataset normalizado
 
 col_count = dataset.shape[1]
-seq_length = 10 # timesteps a recordar
+seq_length = 10  # timesteps a recordar
 dataX = []
 dataY = []
 for i in range(0, ds_size - seq_length, 1):
@@ -95,7 +95,6 @@ for i in range(0, ds_size - seq_length, 1):
 
 n_patterns = len(dataX)
 print("Total Patterns: ", n_patterns)
-
 
 # reshape X to be [samples, time steps, features]
 X = numpy.reshape(dataX, (n_patterns, seq_length, col_count))
@@ -146,12 +145,11 @@ for i in range(test_size - 1):
     predicted.append(predicted_category)
     norm_predicted_category = predicted_category / (CAT_COUNT - 1)
     next_pattern = dataX[test_lower_limit + i + 1].copy()
-    row_to_append = next_pattern[(seq_length-1) * col_count + DEMAND_COL_IDX : ]
+    row_to_append = next_pattern[(seq_length - 1) * col_count + DEMAND_COL_IDX:]
     row_to_append[DEMAND_COL_IDX] = norm_predicted_category
     pattern = numpy.append(pattern, row_to_append)
     # pattern.append(predicted_category)
     pattern = pattern[col_count:len(pattern)]
-
 
 last_date_idx = test_size - 1
 start_date = date.today().replace(true_dates[0, 2], true_dates[0, 1], true_dates[0, 0])  # obtengo la fecha de inicio
