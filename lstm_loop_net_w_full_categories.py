@@ -21,6 +21,11 @@ from fractions import gcd
 
 from skmatrix import categorizer
 from skmatrix import noise_remover
+from skmatrix import normalizer
+
+
+def normalize_dataset(ds):
+    return normalizer.normalize_dataset(ds.copy())
 
 
 def normalize(ds, max_val=None, final_shape=None):
@@ -55,25 +60,36 @@ out_demand = demand_ds[:, 1]
 demand_ds = in_demand - out_demand
 demand_ds.resize((len(demand_ds), 1))
 
+vars_cols = vars_ds.shape[1]
+demand_cols = demand_ds.shape[1]
+
+# creo el dataset con todas las columnas a usar
+dataset = numpy.hstack((demand_ds, vars_ds))
+
+DEMAND_COL_IDX = 0
+
 # elimino las entradas con ruido de la primera region
-a = noise_remover.remove_max_on_region(demand_ds, 4, 0, 300)
-b = noise_remover.remove_min_on_region(a, 5, 0, 300)
-demand_ds = b.copy()
+a = noise_remover.remove_max_on_region(dataset, 4, 0, 300, col=DEMAND_COL_IDX)
+b = noise_remover.remove_min_on_region(a, 5, 0, 300, col=DEMAND_COL_IDX)
+dataset = b.copy()
 
 # obtengo los valores de demanda categorizados
 CAT_COUNT = 40
-categorized_demand, demand_bags = categorizer.categorize_real_w_equal_frames(demand_ds.reshape((len(demand_ds), 1)), cat_count=CAT_COUNT)
-demand_ds = categorized_demand.copy()
+categorized_dataset, demand_bags = categorizer.categorize_real_w_equal_frames(dataset, cat_count=CAT_COUNT, cat_col=DEMAND_COL_IDX)
+dataset = categorized_dataset.copy()
 
-ds_size = len(demand_ds)  # tamano del dataset
+ds_size = len(dataset)  # tamano del dataset
+norm_dataset = normalize_dataset(dataset)  # dataset normalizado
 
-# prepare the dataset of input to output pairs encoded as integers
-seq_length = 10
+col_count = dataset.shape[1]
+seq_length = 10  # timesteps a recordar
 dataX = []
 dataY = []
 for i in range(0, ds_size - seq_length, 1):
-    seq_in = demand_ds.flatten()[i:i + seq_length]
-    seq_out = demand_ds.flatten()[i + seq_length]
+    start_idx = i * col_count
+    end_idx = start_idx + seq_length * col_count
+    seq_in = norm_dataset.flatten()[start_idx:end_idx]
+    seq_out = dataset.flatten()[end_idx]
     dataX.append(seq_in)
     dataY.append(seq_out)
 
@@ -81,8 +97,7 @@ n_patterns = len(dataX)
 print("Total Patterns: ", n_patterns)
 
 # reshape X to be [samples, time steps, features]
-X = numpy.reshape(dataX, (n_patterns, seq_length, 1))
-X = normalize(X, CAT_COUNT - 1)
+X = numpy.reshape(dataX, (n_patterns, seq_length, col_count))
 # one hot encode the output variable
 y = np_utils.to_categorical(dataY)
 
@@ -115,23 +130,26 @@ model.compile(loss='categorical_crossentropy', optimizer=opt)
 # callbacks_list = [checkpoint]
 # fit the model
 # model.fit(train_x, train_y, epochs=20, batch_size=batch_size, callbacks=callbacks_list , shuffle=False)
-model.fit(train_x, train_y, epochs=50, batch_size=batch_size, shuffle=False)
+model.fit(train_x, train_y, epochs=200, batch_size=batch_size, shuffle=False)
 
 predicted = []
 
 # mi primer dato es el comienzo de los datos de prueba
 pattern = dataX[test_lower_limit]
 
-for i in range(test_size):
-    x = numpy.reshape(pattern, (1, len(pattern), 1))
-    x = normalize(x, CAT_COUNT - 1)
+for i in range(test_size - 1):
+    x = numpy.reshape(pattern, (1, seq_length, col_count))
+    # x = normalize(x, CAT_COUNT - 1)
     prediction = model.predict(x, verbose=0)
     predicted_category = numpy.argmax(prediction)
     predicted.append(predicted_category)
-    pattern = numpy.append(pattern, predicted_category)
+    norm_predicted_category = predicted_category / (CAT_COUNT - 1)
+    next_pattern = dataX[test_lower_limit + i + 1].copy()
+    row_to_append = next_pattern[(seq_length - 1) * col_count + DEMAND_COL_IDX:]
+    row_to_append[DEMAND_COL_IDX] = norm_predicted_category
+    pattern = numpy.append(pattern, row_to_append)
     # pattern.append(predicted_category)
-    pattern = pattern[1:len(pattern)]
-
+    pattern = pattern[col_count:len(pattern)]
 
 last_date_idx = test_size - 1
 start_date = date.today().replace(true_dates[0, 2], true_dates[0, 1], true_dates[0, 0])  # obtengo la fecha de inicio
