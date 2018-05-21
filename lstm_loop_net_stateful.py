@@ -53,6 +53,9 @@ def append_prev_demand(vars_ds, demand_ds):
     __demand_ds = demand_ds[:-1]
     return numpy.hstack([__vars_ds, __demand_ds])
 
+def append_curr_demand(vars_ds,  demand_ds):
+    return numpy.hstack([vars_ds , demand_ds])
+
 
 numpy.random.seed(7)
 
@@ -99,7 +102,7 @@ norm_demand_ds = normalize_dataset(demand_ds)
 # si el LSTM a usar es stateful=True entones batch_size deberia ser 1
 batch_size = 1
 seq_length = 1  # timesteps a recordar
-vds_size = len(norm_vars_ds)
+vds_size = len(vars_ds)
 dataX = []
 dataY = []
 for i in range(0, vds_size - seq_length, 1):
@@ -163,10 +166,10 @@ for i in range(test_size):
     norm_predicted_category = predicted_category / (CAT_COUNT - 1)
     # luego obtenemos los datos de entrada de la prediccion N+1 ...
     next_pattern = dataX[test_lower_limit + i + 1].copy()
-    row_to_append = next_pattern[(seq_length - 1) * vds_col_count:]
+    pattern_to_append = next_pattern[(seq_length - 1) * vds_col_count:]
     # ... y modificamos el campo de demanda del dia anterior para que tenga el valor obtenido en la prediccion
-    row_to_append[DEMAND_COL] = norm_predicted_category
-    pattern = numpy.append(pattern, row_to_append)
+    pattern_to_append[DEMAND_COL] = norm_predicted_category
+    pattern = numpy.append(pattern, pattern_to_append)
     # desplazamos el patron un frame
     pattern = pattern[vds_col_count:len(pattern)]
 
