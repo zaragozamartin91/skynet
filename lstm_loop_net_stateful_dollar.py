@@ -74,20 +74,22 @@ demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
 
 dollar_ds = pandas.read_csv(dollar_file, usecols=[5]).values
+# a = dollar_ds[:1] - dollar_ds[:-1]
+# dollar_ds = numpy.vstack( ([0] , a) )
 
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
 
 # prueba usando la demanda NETA
-in_demand = demand_ds[:, 0]
-out_demand = demand_ds[:, 1]
-demand_ds = in_demand - out_demand
-demand_ds.resize((len(demand_ds), 1))
+# in_demand = demand_ds[:, 0]
+# out_demand = demand_ds[:, 1]
+# demand_ds = in_demand - out_demand
+# demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE SALIDA
-# out_demand = demand_ds[:, 1]
-# demand_ds = out_demand
-# demand_ds.resize((len(demand_ds), 1))
+out_demand = demand_ds[:, 1]
+demand_ds = out_demand
+demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE ENTRADA
 # in_demand = demand_ds[:, 0]
@@ -215,7 +217,7 @@ true_net_demand = dataY[test_lower_limit:]
 predicted_net_demand = predicted
 plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_net_demand, 'b-o'), (predicted_net_demand, 'r-o')])
 axes = plt.gca()
-axes.set_ylim([20, 40])  # seteo limite en el eje y entre 0 y 1
+#axes.set_ylim([20, 40])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
 # MIDO EL ERROR CATEGORICO
