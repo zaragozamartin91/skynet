@@ -81,15 +81,15 @@ vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
 
 # prueba usando la demanda NETA
-# in_demand = demand_ds[:, 0]
-# out_demand = demand_ds[:, 1]
-# demand_ds = in_demand - out_demand
-# demand_ds.resize((len(demand_ds), 1))
+in_demand = demand_ds[:, 0]
+out_demand = demand_ds[:, 1]
+demand_ds = in_demand - out_demand
+demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE SALIDA
-out_demand = demand_ds[:, 1]
-demand_ds = out_demand
-demand_ds.resize((len(demand_ds), 1))
+# out_demand = demand_ds[:, 1]
+# demand_ds = out_demand
+# demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE ENTRADA
 # in_demand = demand_ds[:, 0]
@@ -119,8 +119,8 @@ norm_demand_ds = normalize_dataset(demand_ds)
 
 # CONSTRUYO LA MATRIZ DE VENTANA
 # si el LSTM a usar es stateful=True entones batch_size deberia ser 1
-batch_size = 4
-seq_length = 1  # timesteps a recordar
+batch_size = 1
+seq_length = batch_size  # timesteps a recordar
 vds_size = len(vars_ds)
 dataX = []
 dataY = []
@@ -128,15 +128,16 @@ for i in range(0, vds_size - seq_length, 1):
     start_idx = i * vds_col_count
     end_idx = start_idx + seq_length * vds_col_count
     seq_in = norm_vars_ds.flatten()[start_idx:end_idx]
-    seq_out = demand_ds.flatten()[i]
+    seq_out = demand_ds.flatten()[i + seq_length - 1]
     dataX.append(seq_in)
     dataY.append(seq_out)
 
 n_patterns = len(dataX)
 print("Total Patterns: ", n_patterns)
 # sincronizo los valores de fechas y la demanda original
-dates_ds = dates_ds[:-seq_length]
-DEMAND = DEMAND[:-seq_length]
+dates_ds = dates_ds[seq_length-1:]
+# DEMAND = DEMAND[:-seq_length]
+DEMAND = DEMAND[seq_length-1:]
 
 # reshape X to be [samples, time steps, features]
 X = numpy.reshape(dataX, (n_patterns, seq_length, vds_col_count))
@@ -179,7 +180,7 @@ pattern = dataX[test_lower_limit]
 
 last_idx = test_size - 1
 for i in range(test_size):
-    a = pattern.reshape([1,vds_col_count])
+    a = pattern.reshape([1,vds_col_count * seq_length])
     b = numpy.repeat(a , batch_size , axis=0)
     # obtenemos la prediccion del dia N
     x = numpy.reshape(b, (batch_size, seq_length, vds_col_count))
@@ -256,3 +257,6 @@ plt.plot( error , 'r-o' )
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
+
+
+
