@@ -19,6 +19,7 @@ from fractions import gcd
 
 from skmatrix import normalizer
 from skmatrix import categorizer
+from skmatrix import noise_remover
 
 
 def normalize_dataset(dataset):
@@ -87,14 +88,23 @@ demand_ds = demand_df.values.astype('float64')
 # demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE SALIDA
-out_demand = demand_ds[:, 1]
-demand_ds = out_demand
-demand_ds.resize((len(demand_ds), 1))
+# out_demand = demand_ds[:, 1]
+# demand_ds = out_demand
+# demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE ENTRADA
-# in_demand = demand_ds[:, 0]
-# demand_ds = in_demand
-# demand_ds.resize((len(demand_ds), 1))
+in_demand = demand_ds[:, 0]
+demand_ds = in_demand
+demand_ds.resize((len(demand_ds), 1))
+
+vars_ds = numpy.hstack([vars_ds , dollar_ds])
+
+a = numpy.hstack([demand_ds,vars_ds])
+b = noise_remover.remove_max(a , 1)
+c = noise_remover.remove_min(b , 1)
+
+demand_ds = c[:,0:1]
+vars_ds = c[:,1:]
 
 # GUARDO los valores originales de demanda para calcular el error mas adelante
 DEMAND = demand_ds.copy()
@@ -102,7 +112,6 @@ DEMAND = demand_ds.copy()
 CAT_COUNT = 50
 demand_ds, DEMAND_CATEGORIES = categorizer.categorize_real_w_equal_frames(demand_ds, CAT_COUNT, cat_col=0)
 
-vars_ds = numpy.hstack([vars_ds , dollar_ds])
 # Agrego los valores de la demanda del dia anterior
 vars_ds = append_prev_demand(vars_ds, demand_ds)
 # Descarto el primer dia dado que no cuenta con demanda previa o su demanda previa es un falso 0.0
@@ -119,12 +128,12 @@ norm_demand_ds = normalize_dataset(demand_ds)
 
 # CONSTRUYO LA MATRIZ DE VENTANA
 # si el LSTM a usar es stateful=True entones batch_size deberia ser 1
-batch_size = 4
+batch_size = 1
 seq_length = batch_size  # timesteps a recordar
 vds_size = len(vars_ds)
 dataX = []
 dataY = []
-for i in range(0, vds_size - seq_length, 1):
+for i in range(0, vds_size - seq_length + 1, 1):
     start_idx = i * vds_col_count
     end_idx = start_idx + seq_length * vds_col_count
     seq_in = norm_vars_ds.flatten()[start_idx:end_idx]
@@ -160,12 +169,12 @@ true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a
 
 model = Sequential()
 
-epochs = 100
-model.add(LSTM(200, stateful=True, batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
+epochs = 80
+model.add(LSTM(train_y.shape[1] * 4, stateful=True, batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
 # model.add(LSTM(200, stateful=True, return_sequences=True , batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
 # NO SE COMO HACER ANDAR ESTA CAPA
 # model.add(LSTM(150))
-model.add(Dense(100))
+model.add(Dense(train_y.shape[1] * 2))
 model.add(Dense(train_y.shape[1], activation='softmax'))
 opt = optimizers.adam(lr=0.001)
 # model.compile(loss='binary_crossentropy', optimizer=opt)
