@@ -187,6 +187,7 @@ predicted_net_demand = predicted
 plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_net_demand, 'b-o'), (predicted_net_demand, 'r-o')])
 axes = plt.gca()
 #axes.set_ylim([20, 40])  # seteo limite en el eje y entre 0 y 1
+plt.legend()
 plt.show()
 
 # MIDO EL ERROR CATEGORICO

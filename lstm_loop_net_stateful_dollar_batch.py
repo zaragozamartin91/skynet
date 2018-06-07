@@ -61,7 +61,9 @@ def append_curr_demand(vars_ds, demand_ds):
 
 numpy.random.seed(7)
 
-input_file = 'full_entrada_salida_pesos_151.csv'
+suc = '761'
+
+input_file = 'full_entrada_salida_pesos_' + suc + '.csv'
 dollar_file = 'dollar_stats_ord.csv'
 
 # COLUMNAS:
@@ -84,7 +86,7 @@ demand_ds = demand_df.values.astype('float64')
 # guardo una copia del dataset de demanda completo (entrada y salida)
 WHOLE_DEMAND = demand_ds.copy()
 
-DEMAND_TYPE = 'in'
+DEMAND_TYPE = 'net'
 
 # prueba usando la demanda NETA
 if DEMAND_TYPE == 'net':
@@ -106,15 +108,15 @@ if DEMAND_TYPE == 'in':
     demand_ds.resize((len(demand_ds), 1))
 
 vars_ds = numpy.hstack([vars_ds, dollar_ds])
-VARS_COL_COUNT = vars_ds.shape[1] # guardo la cantidad de columnas del dataset de variables original
+VARS_COL_COUNT = vars_ds.shape[1]  # guardo la cantidad de columnas del dataset de variables original
 
-a = numpy.hstack([demand_ds, vars_ds , WHOLE_DEMAND])
+a = numpy.hstack([demand_ds, vars_ds, WHOLE_DEMAND])
 b = noise_remover.remove_max(a, 1)
 c = noise_remover.remove_min(b, 1)
 
 demand_ds = c[:, 0:1]
-vars_ds = c[:, 1:VARS_COL_COUNT+1]
-WHOLE_DEMAND = c[:,VARS_COL_COUNT+1:]
+vars_ds = c[:, 1:VARS_COL_COUNT + 1]
+WHOLE_DEMAND = c[:, VARS_COL_COUNT + 1:]
 
 # GUARDO los valores originales de demanda para calcular el error mas adelante
 DEMAND = demand_ds.copy()
@@ -253,10 +255,7 @@ axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
-# Escribo el dinero predecido en un archivo
-predicted_money = predicted * CAT_FRAME_SIZE
-predicted_money_df = pandas.DataFrame(data=predicted_money, columns=[DEMAND_TYPE])
-predicted_money_df.to_csv(DEMAND_TYPE + '.csv')
+
 
 # MIDO EL ERROR CATEGORICO EN EL PEOR ESCENARIO
 # DEFINO EL PEOR ESCENARIO COMO AQUEL EN EL QUE LA DIFERENCIA DE UNA CATEGORIA ES EN REALIDAD DE 2 FRANJAS (MAXIMA DIFERENCIA)
@@ -280,3 +279,17 @@ plt.plot(error, 'r-o')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
+
+
+predicted_money = None
+if DEMAND_TYPE == 'net':
+    predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - CAT_FRAME_SIZE    
+else:
+    predicted_money = predicted * CAT_FRAME_SIZE
+
+predicted_money_df = pandas.DataFrame(data=predicted_money, columns=[DEMAND_TYPE])
+predicted_money_df.to_csv(DEMAND_TYPE + '_' + suc + '.csv')
+
+
+
+
