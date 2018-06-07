@@ -28,6 +28,9 @@ DOW_SATURDAY = 7
 # Mapeo entre dias de la semana de 'datetime' y dias de la semana de sql server
 DOW_MAP = [2, 3, 4, 5, 6, 7, 1]
 
+# obtengo el formato de la fecha
+DATE_FORMAT = date_parser.STD_DATE_FORMAT
+
 
 def build_dataframe(file_path, delim=DEFAULT_DELIM, cols=DEF_COLS):
     """ Obtiene un dataframe a partir del archivo de dias, entrada y salida """
@@ -79,7 +82,7 @@ def build_missing_entry(curr_entry):
 
     missing_entry = curr_entry.copy()
     datestr = get_date(missing_entry)
-    datewr = date_parser.parse_date_wformat(datestr)
+    datewr = date_parser.parse_date_wformat(datestr, DATE_FORMAT)
     start_date = datewr['full_date']
     end_date = date_parser.add_days(start_date, daycount=1)
 
@@ -96,19 +99,9 @@ def build_missing_entry(curr_entry):
 
 def is_missing(curr_entry, next_entry):
     """ Determina si falta una entrada entre curr_entry y next_entry """
-    # curr_dow = get_dow(curr_entry)
-    # next_dow = get_dow(next_entry)
 
-    # curr_dom = get_dom(curr_entry)
-    # next_dom = get_dom(next_entry)
-
-    # # Escenario 1: hay diferencia de dias de la semana
-    # if(abs(next_dow - curr_dow) > 1): return True
-    # # Escenario 2: hay 6 o 7 dias no laborables consecutivos y ademas no es cambio de mes
-    # if(abs(next_dom - curr_dom) > 1 and abs(next_dom - curr_dom) < 20): return True
-
-    curr_date = date_parser.parse_date(get_date(curr_entry))
-    next_date = date_parser.parse_date(get_date(next_entry))
+    curr_date = date_parser.parse_date_wformat(get_date(curr_entry), DATE_FORMAT)
+    next_date = date_parser.parse_date_wformat(get_date(next_entry), DATE_FORMAT)
 
     return date_parser.two_day_gap(curr_date['full_date'], next_date['full_date'])
 
@@ -219,9 +212,11 @@ def remove_max_spikes(dataset, order):
     outd_mean = dataset[:, OUT_DEMAND_IDX].mean()
     for entry in dataset:
         out_demand = get_out_demand(entry)
-        if (out_demand / ind_mean > order): set_out_demand(entry, ind_mean)
+        if (out_demand / ind_mean > order):
+            set_out_demand(entry, ind_mean)
         in_demand = get_in_demand(entry)
-        if (in_demand / outd_mean > order): set_in_demand(entry, outd_mean)
+        if (in_demand / outd_mean > order):
+            set_in_demand(entry, outd_mean)
     return dataset
 
 
@@ -231,9 +226,11 @@ def remove_min_spikes(dataset, order):
     outd_mean = dataset[:, OUT_DEMAND_IDX].mean()
     for entry in dataset:
         out_demand = get_out_demand(entry)
-        if (out_demand / ind_mean < order): set_out_demand(entry, ind_mean)
+        if (out_demand / ind_mean < order):
+            set_out_demand(entry, ind_mean)
         in_demand = get_in_demand(entry)
-        if (in_demand / outd_mean < order): set_in_demand(entry, outd_mean)
+        if (in_demand / outd_mean < order):
+            set_in_demand(entry, outd_mean)
     return dataset
 
 

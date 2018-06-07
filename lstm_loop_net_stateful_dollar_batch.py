@@ -54,8 +54,9 @@ def append_prev_demand(vars_ds, demand_ds):
     __demand_ds = demand_ds[:-1]
     return numpy.hstack([__vars_ds, __demand_ds])
 
-def append_curr_demand(vars_ds,  demand_ds):
-    return numpy.hstack([vars_ds , demand_ds])
+
+def append_curr_demand(vars_ds, demand_ds):
+    return numpy.hstack([vars_ds, demand_ds])
 
 
 numpy.random.seed(7)
@@ -69,7 +70,6 @@ dollar_file = 'dollar_stats_ord.csv'
 vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7])
 demand_df = pandas.read_csv(input_file, usecols=[5, 6])
 
-
 #  0     1   2    3     4       5       6         7
 # index,dow,dom,month,year,in_demand,out_demand,holiday
 dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
@@ -81,30 +81,40 @@ dollar_ds = pandas.read_csv(dollar_file, usecols=[5]).values
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
 
+# guardo una copia del dataset de demanda completo (entrada y salida)
+WHOLE_DEMAND = demand_ds.copy()
+
+DEMAND_TYPE = 'in'
+
 # prueba usando la demanda NETA
-# in_demand = demand_ds[:, 0]
-# out_demand = demand_ds[:, 1]
-# demand_ds = in_demand - out_demand
-# demand_ds.resize((len(demand_ds), 1))
+if DEMAND_TYPE == 'net':
+    in_demand = demand_ds[:, 0]
+    out_demand = demand_ds[:, 1]
+    demand_ds = in_demand - out_demand
+    demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE SALIDA
-# out_demand = demand_ds[:, 1]
-# demand_ds = out_demand
-# demand_ds.resize((len(demand_ds), 1))
+if DEMAND_TYPE == 'out':
+    out_demand = demand_ds[:, 1]
+    demand_ds = out_demand
+    demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE ENTRADA
-in_demand = demand_ds[:, 0]
-demand_ds = in_demand
-demand_ds.resize((len(demand_ds), 1))
+if DEMAND_TYPE == 'in':
+    in_demand = demand_ds[:, 0]
+    demand_ds = in_demand
+    demand_ds.resize((len(demand_ds), 1))
 
-vars_ds = numpy.hstack([vars_ds , dollar_ds])
+vars_ds = numpy.hstack([vars_ds, dollar_ds])
+VARS_COL_COUNT = vars_ds.shape[1] # guardo la cantidad de columnas del dataset de variables original
 
-a = numpy.hstack([demand_ds,vars_ds])
-b = noise_remover.remove_max(a , 1)
-c = noise_remover.remove_min(b , 1)
+a = numpy.hstack([demand_ds, vars_ds , WHOLE_DEMAND])
+b = noise_remover.remove_max(a, 1)
+c = noise_remover.remove_min(b, 1)
 
-demand_ds = c[:,0:1]
-vars_ds = c[:,1:]
+demand_ds = c[:, 0:1]
+vars_ds = c[:, 1:VARS_COL_COUNT+1]
+WHOLE_DEMAND = c[:,VARS_COL_COUNT+1:]
 
 # GUARDO los valores originales de demanda para calcular el error mas adelante
 DEMAND = demand_ds.copy()
@@ -118,9 +128,10 @@ vars_ds = append_prev_demand(vars_ds, demand_ds)
 demand_ds = demand_ds[1:]
 DEMAND = DEMAND[1:]
 dates_ds = dates_ds[1:]
+WHOLE_DEMAND = WHOLE_DEMAND[1:]
 
 vds_col_count = vars_ds.shape[1]
-DOW_COL, DOM_COL, MONTH_COL, HOLIDAY_COL, DOLLAR_COL , DEMAND_COL = range(vds_col_count)
+DOW_COL, DOM_COL, MONTH_COL, HOLIDAY_COL, DOLLAR_COL, DEMAND_COL = range(vds_col_count)
 
 # Asigno valores de 0 a 1 a todas las entradas
 norm_vars_ds = normalize_dataset(vars_ds)
@@ -144,9 +155,10 @@ for i in range(0, vds_size - seq_length + 1, 1):
 n_patterns = len(dataX)
 print("Total Patterns: ", n_patterns)
 # sincronizo los valores de fechas y la demanda original
-dates_ds = dates_ds[seq_length-1:]
+dates_ds = dates_ds[seq_length - 1:]
 # DEMAND = DEMAND[:-seq_length]
-DEMAND = DEMAND[seq_length-1:]
+DEMAND = DEMAND[seq_length - 1:]
+WHOLE_DEMAND = WHOLE_DEMAND[seq_length - 1:]
 
 # reshape X to be [samples, time steps, features]
 X = numpy.reshape(dataX, (n_patterns, seq_length, vds_col_count))
@@ -169,11 +181,9 @@ true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a
 
 model = Sequential()
 
-epochs = 80
+epochs = 100
 model.add(LSTM(train_y.shape[1] * 4, stateful=True, batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
-# model.add(LSTM(200, stateful=True, return_sequences=True , batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
-# NO SE COMO HACER ANDAR ESTA CAPA
-# model.add(LSTM(150))
+
 model.add(Dense(train_y.shape[1] * 2))
 model.add(Dense(train_y.shape[1], activation='softmax'))
 opt = optimizers.adam(lr=0.001)
@@ -189,14 +199,15 @@ pattern = dataX[test_lower_limit]
 
 last_idx = test_size - 1
 for i in range(test_size):
-    a = pattern.reshape([1,vds_col_count * seq_length])
-    b = numpy.repeat(a , batch_size , axis=0)
+    a = pattern.reshape([1, vds_col_count * seq_length])
+    b = numpy.repeat(a, batch_size, axis=0)
     # obtenemos la prediccion del dia N
     x = numpy.reshape(b, (batch_size, seq_length, vds_col_count))
     prediction = model.predict(x, verbose=0)
     predicted_category = numpy.argmax(prediction[0])
     predicted.append(predicted_category)
-    if i == last_idx: break
+    if i == last_idx:
+        break
     # normalizo el valor de la prediccion
     norm_predicted_category = predicted_category / (CAT_COUNT - 1)
     # luego obtenemos los datos de entrada de la prediccion N+1 ...
@@ -219,10 +230,8 @@ all_ticks = numpy.linspace(date2num(start_date), date2num(end_date), test_size) 
 tick_spacing = test_size if test_size <= 60 else 12
 date_format = "%m/%d" if test_size <= 60 else "%y/%m"
 
-
 major_ticks = numpy.linspace(date2num(start_date), date2num(end_date), tick_spacing)  # obtengo un arreglo con los valores de fecha que quiero mostrar
 major_tick_labels = [date.strftime(date_format) for date in num2date(major_ticks)]
-
 
 # PLOTEO de las categorias predecidas vs las reales
 true_net_demand = dataY[test_lower_limit:test_upper_limit]
@@ -233,16 +242,21 @@ axes = plt.gca()
 plt.show()
 
 # MIDO EL ERROR CATEGORICO
-CAT_FRAME_SIZE = (DEMAND_CATEGORIES[1] - DEMAND_CATEGORIES[0])[0] # tamano de franja de categoria
-demand_delta = abs( numpy.array(true_net_demand) - predicted  ) # diferencias de categoria
+CAT_FRAME_SIZE = (DEMAND_CATEGORIES[1] - DEMAND_CATEGORIES[0])[0]  # tamano de franja de categoria
+demand_delta = abs(numpy.array(true_net_demand) - predicted)  # diferencias de categoria
 c = DEMAND.copy()
 d = c - c.min()
-d = d[test_lower_limit:test_upper_limit] # demanda original en valores positivos
-error = demand_delta * CAT_FRAME_SIZE / ( d.flatten() + 1 ) # obtengo el error punto a punto
-plt.plot( error , 'r-o' )
+d = d[test_lower_limit:test_upper_limit]  # demanda original en valores positivos
+error = demand_delta * CAT_FRAME_SIZE / (d.flatten() + 1)  # obtengo el error punto a punto
+plt.plot(error, 'r-o')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
+
+# Escribo el dinero predecido en un archivo
+predicted_money = predicted * CAT_FRAME_SIZE
+predicted_money_df = pandas.DataFrame(data=predicted_money, columns=[DEMAND_TYPE])
+predicted_money_df.to_csv(DEMAND_TYPE + '.csv')
 
 # MIDO EL ERROR CATEGORICO EN EL PEOR ESCENARIO
 # DEFINO EL PEOR ESCENARIO COMO AQUEL EN EL QUE LA DIFERENCIA DE UNA CATEGORIA ES EN REALIDAD DE 2 FRANJAS (MAXIMA DIFERENCIA)
@@ -250,8 +264,8 @@ plt.show()
 b = demand_delta > 0
 dd = demand_delta.copy()
 dd[b] = dd[b] + 1
-error = dd * CAT_FRAME_SIZE / ( d.flatten() + 1 ) # obtengo el error punto a punto
-plt.plot( error , 'r-o' )
+error = dd * CAT_FRAME_SIZE / (d.flatten() + 1)  # obtengo el error punto a punto
+plt.plot(error, 'r-o')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
@@ -259,13 +273,10 @@ plt.show()
 # MIDO EL ERROR EN DINERO REAL
 c = DEMAND.copy()
 d = c - c.min()
-d = d[test_lower_limit:test_upper_limit] # demanda original en valores positivos
+d = d[test_lower_limit:test_upper_limit]  # demanda original en valores positivos
 e = numpy.array(DEMAND_CATEGORIES)[predicted] - c.min() - CAT_FRAME_SIZE
 error = abs(d - e) / (d + 1)
-plt.plot( error , 'r-o' )
+plt.plot(error, 'r-o')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
-
-
-
