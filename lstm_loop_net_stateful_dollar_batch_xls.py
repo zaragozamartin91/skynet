@@ -61,69 +61,50 @@ def append_curr_demand(vars_ds, demand_ds):
 
 numpy.random.seed(7)
 
-suc = '151'
-DEMAND_TYPE = 'out'
-CAT_COUNT = 50
-batch_size = 1
+# CONFIGURACION -----------------------------------------------------------------------------------------------------------------------
+
+suc = '1' # numero de sucursal
+DEMAND_TYPE = 'cash' # tipo de demanda a medir
+CAT_COUNT = 50 # cantidad de categorias de dinero
+batch_size = 1 # batch de entrenamiento
 seq_length = batch_size  # timesteps a recordar
 test_size = 30
-epochs = 100
-w_dollar = False
-input_file = 'full_entrada_salida_pesos_' + suc + '.csv'
-dollar_file = 'dollar_stats_ord.csv'
+epochs = 150
+input_file = 'full_caja_atm_' + suc + '.csv'
+
+# ------------------------------------------------------------------------------------------------------------------------------------
 
 
 # COLUMNAS:
-#  0     1   2    3     4       5       6         7
-# index,dow,dom,month,year,in_demand,out_demand,holiday
-vars_df = pandas.read_csv(input_file, usecols=[7])
-# vars_df = pandas.read_csv(input_file, usecols=[1, 2, 3, 7])
-demand_df = pandas.read_csv(input_file, usecols=[5, 6])
+#  0     1     2    3     4
+# index,DATE,CASHD,ATMD,HOLIDAY
+vars_df = pandas.read_csv(input_file, usecols=[4])
+demand_df = pandas.read_csv(input_file, usecols=[2, 3])
 
-#  0     1   2    3     4       5       6         7
-# index,dow,dom,month,year,in_demand,out_demand,holiday
-dates_ds = pandas.read_csv(input_file, usecols=[2, 3, 4]).values
+#  0     1     2    3     4
+# index,DATE,CASHD,ATMD,HOLIDAY
+dates_ds = pandas.read_csv(input_file, usecols=[1]).values
 
-dollar_ds = pandas.read_csv(dollar_file, usecols=[5]).values
 
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
 
-# guardo una copia del dataset de demanda completo (entrada y salida)
+# guardo una copia del dataset de demanda completo
 WHOLE_DEMAND = demand_ds.copy()
 
-
-# prueba usando la demanda NETA
-if DEMAND_TYPE == 'net':
-    in_demand = demand_ds[:, 0]
-    out_demand = demand_ds[:, 1]
-    demand_ds = in_demand - out_demand
-    demand_ds.resize((len(demand_ds), 1))
-
-# prueba usando la demanda DE SALIDA
-if DEMAND_TYPE == 'out':
-    out_demand = demand_ds[:, 1]
+# prueba usando la demanda DE ATM
+if DEMAND_TYPE == 'atm':
+    out_demand = demand_ds[:, 0]
     demand_ds = out_demand
     demand_ds.resize((len(demand_ds), 1))
 
-# prueba usando la demanda DE ENTRADA
-if DEMAND_TYPE == 'in':
-    in_demand = demand_ds[:, 0]
+# prueba usando la demanda DE CAJERO
+if DEMAND_TYPE == 'cash':
+    in_demand = demand_ds[:, 1]
     demand_ds = in_demand
     demand_ds.resize((len(demand_ds), 1))
 
-if w_dollar:
-    vars_ds = numpy.hstack([vars_ds, dollar_ds])
-
 VARS_COL_COUNT = vars_ds.shape[1]  # guardo la cantidad de columnas del dataset de variables original
-
-a = numpy.hstack([demand_ds, vars_ds, WHOLE_DEMAND])
-b = noise_remover.remove_max(a, 1)
-c = noise_remover.remove_min(b, 1)
-
-demand_ds = c[:, 0:1]
-vars_ds = c[:, 1:VARS_COL_COUNT + 1]
-WHOLE_DEMAND = c[:, VARS_COL_COUNT + 1:]
 
 # GUARDO los valores originales de demanda para calcular el error mas adelante
 DEMAND = demand_ds.copy()
@@ -139,11 +120,7 @@ dates_ds = dates_ds[1:]
 WHOLE_DEMAND = WHOLE_DEMAND[1:]
 
 vds_col_count = vars_ds.shape[1]
-# DOW_COL, DOM_COL, MONTH_COL, HOLIDAY_COL, DOLLAR_COL, DEMAND_COL = range(vds_col_count)
-if w_dollar:
-    HOLIDAY_COL, DOLLAR_COL, DEMAND_COL = range(vds_col_count)
-else:
-    HOLIDAY_COL, DEMAND_COL = range(vds_col_count)
+HOLIDAY_COL, DEMAND_COL = range(vds_col_count)
 
 # Asigno valores de 0 a 1 a todas las entradas
 norm_vars_ds = normalize_dataset(vars_ds)
@@ -174,6 +151,7 @@ X = numpy.reshape(dataX, (n_patterns, seq_length, vds_col_count))
 # one hot encode the output variable
 y = np_utils.to_categorical(dataY)
 
+
 train_size = batch_size * int((len(X) - test_size) / batch_size)
 
 train_lower_limit = 0
@@ -188,6 +166,7 @@ test_y = y[test_lower_limit:test_upper_limit]
 true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a graficar
 
 model = Sequential()
+
 
 model.add(LSTM(train_y.shape[1] * 4, stateful=True, batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
 
@@ -229,9 +208,8 @@ for i in range(test_size):
 predicted = numpy.array(predicted)
 
 # Obtenemos los ticks para graficar usando fechas...
-last_date_idx = test_size - 1
-start_date = date.today().replace(true_dates[0, 2], true_dates[0, 1], true_dates[0, 0])  # obtengo la fecha de inicio
-end_date = date.today().replace(true_dates[last_date_idx, 2], true_dates[last_date_idx, 1], true_dates[last_date_idx, 0])  # obtengo la fecha de fin
+start_date = datetime.strptime(true_dates[0, 0],'%Y-%m-%d') # obtengo la fecha de inicio
+end_date = datetime.strptime(true_dates[-1, 0],'%Y-%m-%d')  # obtengo la fecha de fin
 all_ticks = numpy.linspace(date2num(start_date), date2num(end_date), test_size)  # obtengo un arreglo con todos los valores numericos de fechas
 
 tick_spacing = test_size if test_size <= 60 else 12
