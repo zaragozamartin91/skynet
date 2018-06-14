@@ -64,12 +64,12 @@ numpy.random.seed(7)
 # CONFIGURACION -----------------------------------------------------------------------------------------------------------------------
 
 suc = '1' # numero de sucursal
-DEMAND_TYPE = 'cash' # tipo de demanda a medir
+DEMAND_TYPE = 'all' # tipo de demanda a medir
 CAT_COUNT = 50 # cantidad de categorias de dinero
 batch_size = 1 # batch de entrenamiento
 seq_length = batch_size  # timesteps a recordar
 test_size = 30
-epochs = 150
+epochs = 100
 input_file = 'full_caja_atm_' + suc + '.csv'
 
 # ------------------------------------------------------------------------------------------------------------------------------------
@@ -94,15 +94,19 @@ WHOLE_DEMAND = demand_ds.copy()
 
 # prueba usando la demanda DE ATM
 if DEMAND_TYPE == 'atm':
-    out_demand = demand_ds[:, 0]
-    demand_ds = out_demand
+    demand_ds = demand_ds[:, 0]
     demand_ds.resize((len(demand_ds), 1))
 
 # prueba usando la demanda DE CAJERO
 if DEMAND_TYPE == 'cash':
-    in_demand = demand_ds[:, 1]
-    demand_ds = in_demand
+    demand_ds = demand_ds[:, 1]
     demand_ds.resize((len(demand_ds), 1))
+
+# prueba usand la suma de las demandas
+if DEMAND_TYPE == 'all':
+    demand_ds = demand_ds[:, 0] + demand_ds[:, 1]
+    demand_ds.resize((len(demand_ds), 1))
+
 
 VARS_COL_COUNT = vars_ds.shape[1]  # guardo la cantidad de columnas del dataset de variables original
 
@@ -262,17 +266,4 @@ plt.plot(error, 'r-o')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
-
-
-predicted_money = None
-if DEMAND_TYPE == 'net':
-    predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - CAT_FRAME_SIZE    
-else:
-    predicted_money = predicted * CAT_FRAME_SIZE
-
-predicted_money_df = pandas.DataFrame(data=predicted_money, columns=[DEMAND_TYPE])
-predicted_money_df.to_csv(DEMAND_TYPE + '_' + suc + '.csv')
-
-
-
 
