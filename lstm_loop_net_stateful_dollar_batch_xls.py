@@ -30,19 +30,22 @@ def de_normalize_dataset(normalized_ds, original_ds):
     return normalizer.de_normalize_dataset(normalized_ds.copy(), original_ds)
 
 
-def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots):
+def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots, ylabels=None):
     """ 
     Plotea sets de datos
     :param all_xticks : todos los valores del eje x
     :param major_xticks : los valores principales del eje x (valores a mostrar)
     :param major_xticks_labels : labels de los principales valores del eje x (arreglo de strings)
     :param yplots : arreglo de tuplas '(datos_eje_y , color_ploteo)'
+    :param ylabels : [OPCIONAL] nombres de las curvas
     """
     fig = plt.figure()
     graph = fig.add_subplot(111)
     x = all_xticks
-    for yplot in yplots:
-        graph.plot(x, yplot[0], yplot[1])
+    for idx in range(len(yplots)):
+        yplot = yplots[idx]
+        if ylabels is None: graph.plot(x, yplot[0], yplot[1])
+        else: graph.plot(x, yplot[0], yplot[1], label=ylabels[idx])
     graph.set_xticks(major_xticks)
     graph.set_xticklabels(major_xticks_labels)
     return graph
@@ -63,17 +66,16 @@ numpy.random.seed(7)
 
 # CONFIGURACION -----------------------------------------------------------------------------------------------------------------------
 
-suc = '1' # numero de sucursal
-DEMAND_TYPE = 'all' # tipo de demanda a medir
-CAT_COUNT = 50 # cantidad de categorias de dinero
-batch_size = 1 # batch de entrenamiento
+suc = '1'  # numero de sucursal
+DEMAND_TYPE = 'all'  # tipo de demanda a medir
+CAT_COUNT = 50  # cantidad de categorias de dinero
+batch_size = 1  # batch de entrenamiento
 seq_length = batch_size  # timesteps a recordar
 test_size = 30
 epochs = 100
-input_file = 'full_caja_atm_' + suc + '.csv'
+input_file = 'full_caja_Datm_' + suc + '.csv'
 
 # ------------------------------------------------------------------------------------------------------------------------------------
-
 
 # COLUMNAS:
 #  0     1     2    3     4
@@ -84,7 +86,6 @@ demand_df = pandas.read_csv(input_file, usecols=[2, 3])
 #  0     1     2    3     4
 # index,DATE,CASHD,ATMD,HOLIDAY
 dates_ds = pandas.read_csv(input_file, usecols=[1]).values
-
 
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
@@ -106,7 +107,6 @@ if DEMAND_TYPE == 'cash':
 if DEMAND_TYPE == 'all':
     demand_ds = demand_ds[:, 0] + demand_ds[:, 1]
     demand_ds.resize((len(demand_ds), 1))
-
 
 VARS_COL_COUNT = vars_ds.shape[1]  # guardo la cantidad de columnas del dataset de variables original
 
@@ -155,7 +155,6 @@ X = numpy.reshape(dataX, (n_patterns, seq_length, vds_col_count))
 # one hot encode the output variable
 y = np_utils.to_categorical(dataY)
 
-
 train_size = batch_size * int((len(X) - test_size) / batch_size)
 
 train_lower_limit = 0
@@ -170,7 +169,6 @@ test_y = y[test_lower_limit:test_upper_limit]
 true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a graficar
 
 model = Sequential()
-
 
 model.add(LSTM(train_y.shape[1] * 4, stateful=True, batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
 
@@ -212,8 +210,8 @@ for i in range(test_size):
 predicted = numpy.array(predicted)
 
 # Obtenemos los ticks para graficar usando fechas...
-start_date = datetime.strptime(true_dates[0, 0],'%Y-%m-%d') # obtengo la fecha de inicio
-end_date = datetime.strptime(true_dates[-1, 0],'%Y-%m-%d')  # obtengo la fecha de fin
+start_date = datetime.strptime(true_dates[0, 0], '%Y-%m-%d')  # obtengo la fecha de inicio
+end_date = datetime.strptime(true_dates[-1, 0], '%Y-%m-%d')  # obtengo la fecha de fin
 all_ticks = numpy.linspace(date2num(start_date), date2num(end_date), test_size)  # obtengo un arreglo con todos los valores numericos de fechas
 
 tick_spacing = test_size if test_size <= 60 else 12
@@ -225,9 +223,11 @@ major_tick_labels = [date.strftime(date_format) for date in num2date(major_ticks
 # PLOTEO de las categorias predecidas vs las reales
 true_net_demand = dataY[test_lower_limit:test_upper_limit]
 predicted_net_demand = predicted
-plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_net_demand, 'b-o'), (predicted_net_demand, 'r-o')])
+plot_w_xticks(all_ticks, major_ticks, major_tick_labels, [(true_net_demand, 'b-o'), (predicted_net_demand, 'r-o')],
+              ['categorias reales', 'categorias predecidas'])
 axes = plt.gca()
-#axes.set_ylim([20, 40])  # seteo limite en el eje y entre 0 y 1
+axes.set_ylim([0, 45])  # seteo limite en el eje y entre 0 y 1
+plt.legend()
 plt.show()
 
 # MIDO EL ERROR CATEGORICO
@@ -237,23 +237,10 @@ c = DEMAND.copy()
 d = c - c.min()
 d = d[test_lower_limit:test_upper_limit]  # demanda original en valores positivos
 error = demand_delta * CAT_FRAME_SIZE / (d.flatten() + 1)  # obtengo el error punto a punto
-plt.plot(error, 'r-o')
+plt.plot(error, 'r-o', label='error de categorias')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
-plt.show()
-
-
-
-# MIDO EL ERROR CATEGORICO EN EL PEOR ESCENARIO
-# DEFINO EL PEOR ESCENARIO COMO AQUEL EN EL QUE LA DIFERENCIA DE UNA CATEGORIA ES EN REALIDAD DE 2 FRANJAS (MAXIMA DIFERENCIA)
-# ASUMO QUE LOS VALORES 0 (NO LABORABLES) FUERON PREDECIDOS CORRECTAMENTE
-b = demand_delta > 0
-dd = demand_delta.copy()
-dd[b] = dd[b] + 1
-error = dd * CAT_FRAME_SIZE / (d.flatten() + 1)  # obtengo el error punto a punto
-plt.plot(error, 'r-o')
-axes = plt.gca()
-axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+plt.legend()
 plt.show()
 
 # MIDO EL ERROR EN DINERO REAL
@@ -262,8 +249,15 @@ d = c - c.min()
 d = d[test_lower_limit:test_upper_limit]  # demanda original en valores positivos
 e = numpy.array(DEMAND_CATEGORIES)[predicted] - c.min() - CAT_FRAME_SIZE
 error = abs(d - e) / (d + 1)
-plt.plot(error, 'r-o')
+plt.plot(error, 'r-o', label='Error de dinero real')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+plt.legend()
 plt.show()
 
+plt.plot(DEMAND[test_lower_limit:test_upper_limit], 'b-o', label='Demanda real de dinero')
+half_cat_size = CAT_FRAME_SIZE / 2.0
+predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - half_cat_size
+plt.plot(predicted_money, 'r-o', label='Demanda predecida de dinero')
+plt.legend()
+plt.show()
