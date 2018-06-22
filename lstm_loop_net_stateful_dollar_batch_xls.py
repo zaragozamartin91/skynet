@@ -67,11 +67,11 @@ numpy.random.seed(7)
 # CONFIGURACION -----------------------------------------------------------------------------------------------------------------------
 
 suc = '1'  # numero de sucursal
-DEMAND_TYPE = 'all'  # tipo de demanda a medir
+DEMAND_TYPE = 'cash'  # tipo de demanda a medir
 CAT_COUNT = 50  # cantidad de categorias de dinero
 batch_size = 1  # batch de entrenamiento
 seq_length = batch_size  # timesteps a recordar
-test_size = 30
+test_size = 31
 epochs = 100
 input_file = 'full_caja_Datm_' + suc + '.csv'
 
@@ -93,13 +93,13 @@ demand_ds = demand_df.values.astype('float64')
 # guardo una copia del dataset de demanda completo
 WHOLE_DEMAND = demand_ds.copy()
 
-# prueba usando la demanda DE ATM
-if DEMAND_TYPE == 'atm':
+# prueba usando la demanda DE CAJA
+if DEMAND_TYPE == 'cash':
     demand_ds = demand_ds[:, 0]
     demand_ds.resize((len(demand_ds), 1))
 
-# prueba usando la demanda DE CAJERO
-if DEMAND_TYPE == 'cash':
+# prueba usando la demanda DE ATM
+if DEMAND_TYPE == 'atm':
     demand_ds = demand_ds[:, 1]
     demand_ds.resize((len(demand_ds), 1))
 
@@ -243,6 +243,16 @@ axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.legend()
 plt.show()
 
+
+error = abs( numpy.array(true_net_demand) - predicted ) / numpy.array(true_net_demand)
+plt.plot(error, 'r-o', label='Error entre categorias')
+axes = plt.gca()
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+plt.legend()
+plt.show()
+
+
+
 # MIDO EL ERROR EN DINERO REAL
 c = DEMAND.copy()
 d = c - c.min()
@@ -255,9 +265,24 @@ axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.legend()
 plt.show()
 
-plt.plot(DEMAND[test_lower_limit:test_upper_limit], 'b-o', label='Demanda real de dinero')
+
+true_money = DEMAND[test_lower_limit:test_upper_limit]
 half_cat_size = CAT_FRAME_SIZE / 2.0
-predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - half_cat_size
+# predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - half_cat_size
+predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - CAT_FRAME_SIZE
+plt.plot(DEMAND[test_lower_limit:test_upper_limit], 'b-o', label='Demanda real de dinero')
 plt.plot(predicted_money, 'r-o', label='Demanda predecida de dinero')
+plt.legend()
+plt.show()
+
+
+# estos son los dias de diciembre que coe utilizo como benchmark
+ii = [1,4,5,6,11,12,13,14,15,18,19,20,21,22,26,27,28]
+indexes = numpy.array(ii)
+indexes = indexes - 1
+coe_predicted_money = predicted_money[indexes]
+coe_true_money = true_money[indexes]
+plt.plot(coe_true_money, 'b-o', label='Demanda real en dias de coe')
+plt.plot(coe_predicted_money, 'r-o', label='Demanda predecida en dias de coe')
 plt.legend()
 plt.show()
