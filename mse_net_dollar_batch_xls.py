@@ -54,17 +54,23 @@ def append_prev_demand(vars_ds, demand_ds):
     return numpy.hstack([__vars_ds, __demand_ds])
 
 
+def measure_accuracy(true_money , predicted_money , cat_frame_size):
+    a = abs( true_money - predicted_money ) < (cat_frame_size * 2)
+    true_count = a.astype('int32').sum()
+    return true_count / a.shape[0]
+
+
 numpy.random.seed(7)
 
 # CONFIGURACION ---------------------------------------------------------------------------------------------------
 
 suc = '1'  # numero de sucursal
-DEMAND_TYPE = 'cash'  # tipo de demanda a medir
-CAT_COUNT = 50  # cantidad de categorias de dinero
+DEMAND_TYPE = 'atm'  # tipo de demanda a medir
+CAT_COUNT = 40  # cantidad de categorias de dinero
 batch_size = 1  # batch de entrenamiento
 test_size = 30
-epochs = 100
-input_file = 'full_caja_atm_' + suc + '.csv'
+epochs = 150
+input_file = 'full_caja_0atm_' + suc + '.csv'
 use_dates = True
 
 # ----------------------------------------------------------------------------------------------------------------
@@ -232,3 +238,8 @@ plt.plot(error, 'r-o')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
+
+
+predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - CAT_FRAME_SIZE
+true_money = DEMAND[test_lower_limit:test_upper_limit]
+

@@ -44,8 +44,10 @@ def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots, ylabels
     x = all_xticks
     for idx in range(len(yplots)):
         yplot = yplots[idx]
-        if ylabels is None: graph.plot(x, yplot[0], yplot[1])
-        else: graph.plot(x, yplot[0], yplot[1], label=ylabels[idx])
+        if ylabels is None:
+            graph.plot(x, yplot[0], yplot[1])
+        else:
+            graph.plot(x, yplot[0], yplot[1], label=ylabels[idx])
     graph.set_xticks(major_xticks)
     graph.set_xticklabels(major_xticks_labels)
     return graph
@@ -62,18 +64,23 @@ def append_curr_demand(vars_ds, demand_ds):
     return numpy.hstack([vars_ds, demand_ds])
 
 
+def measure_accuracy(true_money , predicted_money , cat_frame_size):
+    a = abs( true_money - predicted_money ) < (cat_frame_size * 2)
+    true_count = a.astype('int32').sum()
+    return true_count / a.shape[0]
+
 numpy.random.seed(7)
 
 # CONFIGURACION -----------------------------------------------------------------------------------------------------------------------
 
 suc = '1'  # numero de sucursal
 DEMAND_TYPE = 'cash'  # tipo de demanda a medir
-CAT_COUNT = 50  # cantidad de categorias de dinero
+CAT_COUNT = 40  # cantidad de categorias de dinero
 batch_size = 1  # batch de entrenamiento
 seq_length = batch_size  # timesteps a recordar
 test_size = 31
-epochs = 100
-input_file = 'full_caja_Datm_' + suc + '.csv'
+epochs = 150
+input_file = 'full_caja_0atm_' + suc + '.csv'
 
 # ------------------------------------------------------------------------------------------------------------------------------------
 
@@ -243,15 +250,12 @@ axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.legend()
 plt.show()
 
-
-error = abs( numpy.array(true_net_demand) - predicted ) / numpy.array(true_net_demand)
+error = abs(numpy.array(true_net_demand) - predicted) / numpy.array(true_net_demand)
 plt.plot(error, 'r-o', label='Error entre categorias')
 axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.legend()
 plt.show()
-
-
 
 # MIDO EL ERROR EN DINERO REAL
 c = DEMAND.copy()
@@ -265,24 +269,36 @@ axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.legend()
 plt.show()
 
-
 true_money = DEMAND[test_lower_limit:test_upper_limit]
 half_cat_size = CAT_FRAME_SIZE / 2.0
 # predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - half_cat_size
 predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - CAT_FRAME_SIZE
-plt.plot(DEMAND[test_lower_limit:test_upper_limit], 'b-o', label='Demanda real de dinero')
+plt.plot(true_money, 'b-o', label='Demanda real de dinero')
 plt.plot(predicted_money, 'r-o', label='Demanda predecida de dinero')
 plt.legend()
 plt.show()
 
 
+
 # estos son los dias de diciembre que coe utilizo como benchmark
-ii = [1,4,5,6,11,12,13,14,15,18,19,20,21,22,26,27,28]
+ii = [1, 4, 5, 6, 11, 12, 13, 14, 15, 18, 19, 20, 21, 22, 26, 27, 28]
 indexes = numpy.array(ii)
 indexes = indexes - 1
 coe_predicted_money = predicted_money[indexes]
 coe_true_money = true_money[indexes]
-plt.plot(coe_true_money, 'b-o', label='Demanda real en dias de coe')
-plt.plot(coe_predicted_money, 'r-o', label='Demanda predecida en dias de coe')
+at = all_ticks[indexes]
+mjt = major_ticks[indexes]
+mjtl = numpy.array(major_tick_labels)[indexes]
+plot_w_xticks(at, mjt, mjtl, [(coe_true_money, 'b-o'), (coe_predicted_money, 'r-o')], ['dinero real (periodo COE)', 'dinero predecido (periodo COE)'])
 plt.legend()
 plt.show()
+
+coe_diff = coe_true_money - coe_predicted_money
+err = abs(coe_diff / coe_true_money)
+plot_w_xticks(at, mjt, mjtl, [(err, 'r-o')], ['Error de dinero en coe'])
+axes = plt.gca()
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+plt.legend()
+plt.show()
+
+
