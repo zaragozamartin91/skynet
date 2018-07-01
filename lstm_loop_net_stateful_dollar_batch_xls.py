@@ -74,14 +74,14 @@ numpy.random.seed(7)
 # CONFIGURACION -----------------------------------------------------------------------------------------------------------------------
 
 suc = '1'  # numero de sucursal
-DEMAND_TYPE = 'cash'  # tipo de demanda a medir
-CAT_COUNT = 40  # cantidad de categorias de dinero
+DEMAND_TYPE = 'atm'  # tipo de demanda a medir
+CAT_COUNT = 50  # cantidad de categorias de dinero
 batch_size = 1  # batch de entrenamiento
-seq_length = batch_size  # timesteps a recordar
-test_size = 31
-epochs = 150
+seq_length = 10  # timesteps a recordar
+test_size = 30
+epochs = 100
 input_file = 'full_caja_0atm_' + suc + '.csv'
-
+use_dates = True
 # ------------------------------------------------------------------------------------------------------------------------------------
 
 # COLUMNAS:
@@ -96,6 +96,23 @@ dates_ds = pandas.read_csv(input_file, usecols=[1]).values
 
 vars_ds = vars_df.values.astype('float64')
 demand_ds = demand_df.values.astype('float64')
+
+
+if use_dates:
+    dts_ds = []
+    for de in dates_ds:
+        d = datetime.strptime(de[0],'%Y-%m-%d')
+        dts_ds.append([d.weekday(), d.day , d.month])
+    ndts = numpy.array(dts_ds)
+    #vars_ds = numpy.hstack([numpy.array(dts_ds), vars_ds])
+    m = ndts[:,2]
+    hm = numpy.any([m==2,m==6,m==8,m==10,m==12],axis=0).astype("int32").reshape([len(m),1])
+    vars_ds = numpy.hstack([vars_ds,hm])
+
+
+# vars_ds = vars_ds[:-31]
+# demand_ds = demand_ds[:-31]
+# dates_ds = dates_ds[:-31]
 
 # guardo una copia del dataset de demanda completo
 WHOLE_DEMAND = demand_ds.copy()
@@ -131,7 +148,7 @@ dates_ds = dates_ds[1:]
 WHOLE_DEMAND = WHOLE_DEMAND[1:]
 
 vds_col_count = vars_ds.shape[1]
-HOLIDAY_COL, DEMAND_COL = range(vds_col_count)
+DEMAND_COL = VARS_COL_COUNT
 
 # Asigno valores de 0 a 1 a todas las entradas
 norm_vars_ds = normalize_dataset(vars_ds)

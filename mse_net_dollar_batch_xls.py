@@ -66,7 +66,7 @@ numpy.random.seed(7)
 
 suc = '1'  # numero de sucursal
 DEMAND_TYPE = 'atm'  # tipo de demanda a medir
-CAT_COUNT = 40  # cantidad de categorias de dinero
+CAT_COUNT = 50  # cantidad de categorias de dinero
 batch_size = 1  # batch de entrenamiento
 test_size = 30
 epochs = 150
