@@ -8,6 +8,7 @@ from keras.layers import LSTM
 from keras import optimizers
 from keras.utils import np_utils
 from keras.preprocessing.sequence import TimeseriesGenerator
+from keras import initializers
 
 from datetime import date
 from datetime import datetime
@@ -64,9 +65,9 @@ def append_curr_demand(vars_ds, demand_ds):
     return numpy.hstack([vars_ds, demand_ds])
 
 
-def measure_accuracy(true_values , predicted_values , CAT_FRAME_SIZE=0):
-    if CAT_FRAME_SIZE > 0:
-        a = abs( true_values - predicted_values ) < (CAT_FRAME_SIZE * 2)
+def measure_accuracy(true_values , predicted_values , cat_frame_size=0):
+    if cat_frame_size > 0:
+        a = abs( true_values - predicted_values ) < (cat_frame_size * 2)
         true_count = a.astype('int32').sum()
         return true_count / a.shape[0]
     else:
@@ -78,14 +79,14 @@ numpy.random.seed(7)
 
 # CONFIGURACION -----------------------------------------------------------------------------------------------------------------------
 
-suc = '1'               # numero de sucursal
+suc = '2'               # numero de sucursal
 DEMAND_TYPE = 'cash'    # tipo de demanda a medir
 CAT_COUNT = 50          # cantidad de categorias de dinero
 batch_size = 1          # batch de entrenamiento
-seq_length = 15         # timesteps a recordar
+seq_length = 10         # timesteps a recordar
 test_size = 31
-epochs = 100
-input_file = 'full_caja_0atm_' + suc + '.csv'
+epochs = 150
+input_file = 'full_caja_Datm_' + suc + '.csv'
 
 # ------------------------------------------------------------------------------------------------------------------------------------
 
@@ -124,8 +125,10 @@ VARS_COL_COUNT = vars_ds.shape[1]  # guardo la cantidad de columnas del dataset 
 
 # GUARDO los valores originales de demanda para calcular el error mas adelante
 DEMAND = demand_ds.copy()
+MINV = DEMAND.min()
 
 demand_ds, DEMAND_CATEGORIES = categorizer.categorize_real_w_equal_frames(demand_ds, CAT_COUNT, cat_col=0)
+DEMAND_CATEGORIES = numpy.array(DEMAND_CATEGORIES).reshape([CAT_COUNT,1])
 
 # Agrego los valores de la demanda del dia anterior
 vars_ds = append_prev_demand(vars_ds, demand_ds)
@@ -182,10 +185,10 @@ true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a
 
 model = Sequential()
 
-model.add(LSTM(train_y.shape[1] * 4, stateful=True, batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
+model.add(LSTM(train_y.shape[1] * 4, stateful=True, kernel_initializer=initializers.random_normal(seed=7) ,batch_input_shape=(batch_size, train_x.shape[1], train_x.shape[2])))
 model.add(Dense(train_y.shape[1] * 2))
 model.add(Dense(train_y.shape[1], activation='softmax'))
-opt = optimizers.adam(lr=0.001)
+opt = optimizers.adam(lr=0.005)
 # model.compile(loss='binary_crossentropy', optimizer=opt)
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 # model.compile(loss='mean_squared_error', optimizer=opt)
@@ -267,7 +270,7 @@ plt.legend()
 plt.show()
 
 # MIDO EL ERROR CATEGORICO
-CAT_FRAME_SIZE = (DEMAND_CATEGORIES[1] - DEMAND_CATEGORIES[0])[0]  # tamano de franja de categoria
+CAT_FRAME_SIZE = (DEMAND_CATEGORIES[1] - DEMAND_CATEGORIES[0])  # tamano de franja de categoria
 demand_delta = abs(numpy.array(true_net_demand) - predicted)  # diferencias de categoria
 c = DEMAND.copy()
 d = c - c.min()
@@ -290,7 +293,7 @@ plt.show()
 c = DEMAND.copy()
 d = c - c.min()
 d = d[test_lower_limit:test_upper_limit]  # demanda original en valores positivos
-e = numpy.array(DEMAND_CATEGORIES)[predicted] - c.min() - CAT_FRAME_SIZE
+e = DEMAND_CATEGORIES[predicted] - c.min() - CAT_FRAME_SIZE
 error = abs(d - e) / (d + 1)
 plt.plot(error, 'r-o', label='Error de dinero real')
 axes = plt.gca()
@@ -308,6 +311,8 @@ plt.legend()
 plt.show()
 
 
+
+# TRABAJANDO CON VALORES DE COE --------------------------------------------------------------------------
 
 # estos son los dias de diciembre que coe utilizo como benchmark
 ii = [1, 4, 5, 6, 11, 12, 13, 14, 15, 18, 19, 20, 21, 22, 26, 27, 28]
@@ -331,3 +336,23 @@ plt.legend()
 plt.show()
 
 
+
+# los valores de COE en el excel estan invertidos
+COE_VALUES = {}
+COE_VALUES['1'] = numpy.array([
+    -5013000, 4013800, 5573300, 7143000, 5148900, 9725700, 5771500, 4166800, 3279400, 6006600, 3652400, 6644600, -1060700, -1301400, 5102700, 4734400, -2921000
+]) * -1
+COE_VALUES['2'] = numpy.array([
+    314500, 1737900, 6216000, 6803600, 1726400, 6531800, 4805600, 2435800, 1764900, 1764900, 3004500, -412000, -18500, -1992400, -2326700, 1515400, 400600
+]) * -1
+
+COE_CATEGORIES = categorizer.categorize_arr(COE_VALUES[suc], CAT_FRAME_SIZE, MINV)
+predicted_on_coe_dates = numpy.array(predicted)[indexes]
+true_on_coe_dates = numpy.array(true_net_demand)[indexes]
+
+coe_diff = abs(COE_CATEGORIES - true_on_coe_dates.flatten())
+rrnn_diff = abs(predicted_on_coe_dates - true_on_coe_dates.flatten())
+
+plot_w_xticks(at, mjt, mjtl, [(true_on_coe_dates, 'b-o'), (predicted_on_coe_dates, 'r-o')],
+              ['categorias reales (periodo COE)', 'categorias predecidas (periodo COE)'])
+plt.show()
