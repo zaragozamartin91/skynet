@@ -4,7 +4,7 @@ import datetime
 
 suc = '2'
 
-df = pandas.read_csv('SUC_' + suc + '_DEMANDAXLS.csv', delimiter=';', usecols=[0, 1, 2], engine='python')
+df = pandas.read_csv('SUC' + suc + '_DEMANDAXLS.csv', delimiter=';', usecols=[0, 1, 2], engine='python')
 
 ds = df.values
 ds_len = len(ds)

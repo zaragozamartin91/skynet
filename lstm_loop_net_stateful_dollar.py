@@ -101,6 +101,7 @@ DEMAND = demand_ds.copy()
 
 CAT_COUNT = 50
 demand_ds, DEMAND_CATEGORIES = categorizer.categorize_real_w_equal_frames(demand_ds, CAT_COUNT, cat_col=0)
+DEMAND_CATEGORIES = numpy.array(DEMAND_CATEGORIES).reshape([CAT_COUNT,1])
 
 vars_ds = numpy.hstack([vars_ds , dollar_ds])
 # Agrego los valores de la demanda del dia anterior

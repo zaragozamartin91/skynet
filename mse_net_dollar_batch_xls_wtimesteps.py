@@ -29,19 +29,24 @@ def de_normalize_dataset(normalized_ds, original_ds):
     return normalizer.de_normalize_dataset(normalized_ds.copy(), original_ds)
 
 
-def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots):
+def plot_w_xticks(all_xticks, major_xticks, major_xticks_labels, yplots, ylabels=None):
     """ 
     Plotea sets de datos
     :param all_xticks : todos los valores del eje x
     :param major_xticks : los valores principales del eje x (valores a mostrar)
     :param major_xticks_labels : labels de los principales valores del eje x (arreglo de strings)
     :param yplots : arreglo de tuplas '(datos_eje_y , color_ploteo)'
+    :param ylabels : [OPCIONAL] nombres de las curvas
     """
     fig = plt.figure()
     graph = fig.add_subplot(111)
     x = all_xticks
-    for yplot in yplots:
-        graph.plot(x, yplot[0], yplot[1])
+    for idx in range(len(yplots)):
+        yplot = yplots[idx]
+        if ylabels is None:
+            graph.plot(x, yplot[0], yplot[1])
+        else:
+            graph.plot(x, yplot[0], yplot[1], label=ylabels[idx])
     graph.set_xticks(major_xticks)
     graph.set_xticklabels(major_xticks_labels)
     return graph
@@ -54,27 +59,29 @@ def append_prev_demand(vars_ds, demand_ds):
     return numpy.hstack([__vars_ds, __demand_ds])
 
 
-def measure_accuracy(true_values , predicted_values , CAT_FRAME_SIZE=0):
-    if CAT_FRAME_SIZE > 0:
-        a = abs( true_values - predicted_values ) < (CAT_FRAME_SIZE * 2)
+def measure_accuracy(true_values, predicted_values, cat_frame_size=0):
+    if cat_frame_size > 0:
+        a = abs(true_values - predicted_values) < (cat_frame_size * 2)
         true_count = a.astype('int32').sum()
         return true_count / a.shape[0]
     else:
-        a = abs( numpy.array(true_values) - numpy.array(predicted_values) )
+        a = abs(numpy.array(true_values).flatten() - numpy.array(predicted_values).flatten())
         b = a <= 2
         return b.astype('int32').sum() / len(b)
+
 
 numpy.random.seed(7)
 
 # CONFIGURACION ---------------------------------------------------------------------------------------------------
 
-suc = '1'  # numero de sucursal
+suc = '2'  # numero de sucursal
 DEMAND_TYPE = 'cash'  # tipo de demanda a medir
 CAT_COUNT = 50  # cantidad de categorias de dinero
 batch_size = 1  # batch de entrenamiento
-test_size = 30
-epochs = 10
-input_file = 'full_caja_0atm_' + suc + '.csv'
+seq_length = 5
+test_size = 31
+epochs = 250
+input_file = 'full_caja_Datm_' + suc + '.csv'
 use_dates = True
 
 # ----------------------------------------------------------------------------------------------------------------
@@ -94,11 +101,13 @@ vars_ds = vars_df.values.astype('float64')
 if use_dates:
     dts_ds = []
     for de in dates_ds:
-        d = datetime.strptime(de[0],'%Y-%m-%d')
+        d = datetime.strptime(de[0], '%Y-%m-%d')
         dts_ds.append([d.weekday(), d.day, d.month])
     vars_ds = numpy.hstack([numpy.array(dts_ds), vars_ds])
 
 demand_ds = demand_df.values.astype('float64')
+
+ORG_VARS_COL_COUNT = vars_ds.shape[1]
 
 # prueba usando la demanda DE ATM
 if DEMAND_TYPE == 'atm':
@@ -114,25 +123,26 @@ if DEMAND_TYPE == 'cash':
 
 # GUARDO los valores originales de demanda para calcular el error mas adelante
 DEMAND = demand_ds.copy()
+MINV = DEMAND.min()
 
 demand_ds, DEMAND_CATEGORIES = categorizer.categorize_real_w_equal_frames(demand_ds, CAT_COUNT, cat_col=0)
+DEMAND_CATEGORIES = numpy.array(DEMAND_CATEGORIES).reshape([CAT_COUNT, 1])
 
-# Agrego los valores de la demanda del dia anterior
-vars_ds = append_prev_demand(vars_ds, demand_ds)
-
-# Descarto el primer dia dado que no cuenta con demanda previa o su demanda previa es un falso 0.0
-demand_ds = demand_ds[1:]
-DEMAND = DEMAND[1:]
-dates_ds = dates_ds[1:]
+__ds = demand_ds.copy()
+for _ in range(seq_length):
+    # Agrego los valores de la demanda del dia anterior
+    vars_ds = append_prev_demand(vars_ds, __ds)
+    __ds = __ds[:-1]
+    # Descarto el primer dia dado que no cuenta con demanda previa o su demanda previa es un falso 0.0
+    demand_ds = demand_ds[1:]
+    DEMAND = DEMAND[1:]
+    dates_ds = dates_ds[1:]
 
 # guardo la cantidad de columnas
 vds_col_count = vars_ds.shape[1]
 
-if use_dates:
-    DOW_COL , DOM_COL , MONTH_COL , HOLIDAY_COL, DEMAND_COL = range(vds_col_count)    
-else:
-    HOLIDAY_COL, DEMAND_COL = range(vds_col_count)
-
+# El indice de columna de la ultima demanda coincide con la cantidad de columnas originales
+DEMAND_COL = ORG_VARS_COL_COUNT
 
 # Asigno valores de 0 a 1 a todas las entradas
 norm_vars_ds = normalize_dataset(vars_ds)
@@ -157,11 +167,10 @@ true_dates = dates_ds[test_lower_limit:test_upper_limit]  # obtengo las fechas a
 
 model = Sequential()
 
-model.add(Dense(train_y.shape[1] * 8, input_dim=vds_col_count))
-model.add(Dense(train_y.shape[1] * 4))
-model.add(Dense(train_y.shape[1] * 2))
+model.add(Dense(train_y.shape[1] * 8, activation='relu', input_dim=vds_col_count, kernel_initializer='random_uniform', bias_initializer='zeros'))
+model.add(Dense(train_y.shape[1] * 8))
 model.add(Dense(train_y.shape[1], activation='softmax'))
-opt = optimizers.adam(lr=0.0001)
+opt = optimizers.adam(lr=0.01)
 # model.compile(loss='binary_crossentropy', optimizer=opt)
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 # model.compile(loss='mean_squared_error', optimizer=opt)
@@ -223,10 +232,22 @@ axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
+# MIDO EL ERROR CATEGORICO EN EL PEOR ESCENARIO
+# DEFINO EL PEOR ESCENARIO COMO AQUEL EN EL QUE LA DIFERENCIA DE UNA CATEGORIA ES EN REALIDAD DE 2 FRANJAS (MAXIMA DIFERENCIA)
+# ASUMO QUE LOS VALORES 0 (NO LABORABLES) FUERON PREDECIDOS CORRECTAMENTE
+b = demand_delta > 0
+dd = demand_delta.copy()
+dd[b] = dd[b] + 1
+error = dd * CAT_FRAME_SIZE / (d.flatten() + 1)  # obtengo el error punto a punto
+plt.plot(error, 'r-o')
+axes = plt.gca()
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+plt.show()
+
 # MIDO EL ERROR EN DINERO REAL
 c = DEMAND.copy()
 d = c - c.min()
-d = d[test_lower_limit:test_upper_limit].flatten()  # demanda original en valores positivos
+d = d[test_lower_limit:test_upper_limit]  # demanda original en valores positivos
 e = numpy.array(DEMAND_CATEGORIES)[predicted] - c.min() - CAT_FRAME_SIZE
 error = abs(d - e) / (d + 1)
 plt.plot(error, 'r-o')
@@ -234,7 +255,48 @@ axes = plt.gca()
 axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
 plt.show()
 
-
 predicted_money = numpy.array(DEMAND_CATEGORIES)[predicted] - CAT_FRAME_SIZE
 true_money = DEMAND[test_lower_limit:test_upper_limit]
 
+# TRABAJANDO CON VALORES DE COE --------------------------------------------------------------------------
+
+# estos son los dias de diciembre que coe utilizo como benchmark
+ii = [1, 4, 5, 6, 11, 12, 13, 14, 15, 18, 19, 20, 21, 22, 26, 27, 28]
+indexes = numpy.array(ii)
+indexes = indexes - 1
+coe_predicted_money = predicted_money[indexes]
+coe_true_money = true_money[indexes]
+at = all_ticks[indexes]
+mjt = major_ticks[indexes]
+mjtl = numpy.array(major_tick_labels)[indexes]
+plot_w_xticks(at, mjt, mjtl, [(coe_true_money, 'b-o'), (coe_predicted_money, 'r-o')], ['dinero real (periodo COE)', 'dinero predecido (periodo COE)'])
+plt.legend()
+plt.show()
+
+coe_diff = coe_true_money - coe_predicted_money
+err = abs(coe_diff / coe_true_money)
+plot_w_xticks(at, mjt, mjtl, [(err, 'r-o')], ['Error de dinero en coe'])
+axes = plt.gca()
+axes.set_ylim([0, 1])  # seteo limite en el eje y entre 0 y 1
+plt.legend()
+plt.show()
+
+# los valores de COE en el excel estan invertidos
+COE_VALUES = {}
+COE_VALUES['1'] = numpy.array([
+    -5013000, 4013800, 5573300, 7143000, 5148900, 9725700, 5771500, 4166800, 3279400, 6006600, 3652400, 6644600, -1060700, -1301400, 5102700, 4734400, -2921000
+]) * -1
+COE_VALUES['2'] = numpy.array([
+    314500, 1737900, 6216000, 6803600, 1726400, 6531800, 4805600, 2435800, 1764900, 1764900, 3004500, -412000, -18500, -1992400, -2326700, 1515400, 400600
+]) * -1
+
+COE_CATEGORIES = categorizer.categorize_arr(COE_VALUES[suc], CAT_FRAME_SIZE, MINV)
+predicted_on_coe_dates = numpy.array(predicted)[indexes]
+true_on_coe_dates = numpy.array(true_net_demand)[indexes]
+
+coe_diff = abs(COE_CATEGORIES - true_on_coe_dates.flatten())
+rrnn_diff = abs(predicted_on_coe_dates - true_on_coe_dates.flatten())
+
+plot_w_xticks(at, mjt, mjtl, [(true_on_coe_dates, 'b-o'), (predicted_on_coe_dates, 'r-o')],
+              ['categorias reales (periodo COE)', 'categorias predecidas (periodo COE)'])
+plt.show()

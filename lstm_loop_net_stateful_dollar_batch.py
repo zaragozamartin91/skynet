@@ -73,7 +73,7 @@ CAT_COUNT = 50
 batch_size = 10
 seq_length = batch_size  # timesteps a recordar
 test_size = 30
-epochs = 100
+epochs = 10
 w_dollar = False
 input_file = 'full_entrada_salida_pesos_' + suc + '.csv'
 dollar_file = 'dollar_stats_ord.csv'
@@ -135,6 +135,7 @@ WHOLE_DEMAND = c[:, VARS_COL_COUNT + 1:]
 DEMAND = demand_ds.copy()
 
 demand_ds, DEMAND_CATEGORIES = categorizer.categorize_real_w_equal_frames(demand_ds, CAT_COUNT, cat_col=0)
+DEMAND_CATEGORIES = numpy.array(DEMAND_CATEGORIES).reshape([CAT_COUNT,1])
 
 # Agrego los valores de la demanda del dia anterior
 vars_ds = append_prev_demand(vars_ds, demand_ds)

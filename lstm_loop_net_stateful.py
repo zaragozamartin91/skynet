@@ -84,6 +84,7 @@ demand_ds.resize((len(demand_ds), 1))
 
 CAT_COUNT = 100
 demand_ds, DEMAND_CATEGORIES = categorizer.categorize_real_w_equal_frames(demand_ds, CAT_COUNT, cat_col=0)
+DEMAND_CATEGORIES = numpy.array(DEMAND_CATEGORIES).reshape([CAT_COUNT,1])
 
 # Agrego los valores de la demanda del dia anterior
 vars_ds = append_prev_demand(vars_ds, demand_ds)
